@@ -563,6 +563,36 @@ body {
     background: linear-gradient(90deg, rgba(112, 192, 112, 0.06) 0%, transparent 100%);
 }
 
+/* Marcus - amber/gold, the smooth conservative operative who plays both sides */
+.speaker-marcus #character-name {
+    color: #d8a838;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.speaker-marcus #dialogue-text {
+    color: #f8eed0;
+    border-left: 3px solid #d8a838;
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+    background: linear-gradient(90deg, rgba(216, 168, 56, 0.06) 0%, transparent 100%);
+}
+
+/* Boyd - crimson, the populist conservative wildcard */
+.speaker-boyd #character-name {
+    color: #d05050;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.speaker-boyd #dialogue-text {
+    color: #f8e2e2;
+    border-left: 3px solid #d05050;
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+    background: linear-gradient(90deg, rgba(208, 80, 80, 0.06) 0%, transparent 100%);
+}
+
 /* Minor characters (meeting voices, reps) - muted, background noise */
 .speaker-minor #character-name {
     color: #808070;

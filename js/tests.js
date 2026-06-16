@@ -52,6 +52,7 @@ const TestRunner = {
         this.testInteractiveHearing();
         this.testMiraclePath();
         this.testVoteCount();
+        this.testBoydPuzzle();
 
         console.log(`\n${'='.repeat(50)}`);
         console.log(`Tests: ${this.passed} passed, ${this.failed} failed`);
@@ -415,6 +416,8 @@ const TestRunner = {
         this.assert(sceneIds.includes('ending_walked_away'), 'ending_walked_away scene exists');
         this.assert(sceneIds.includes('ending_no_leverage'), 'ending_no_leverage scene exists');
         this.assert(sceneIds.includes('ending_miracle'), 'ending_miracle scene exists');
+        this.assert(sceneIds.includes('ending_realignment'), 'ending_realignment scene exists');
+        this.assert(sceneIds.includes('climax_realignment'), 'climax_realignment scene exists');
         this.assert(sceneIds.includes('climax_both_no_leverage'), 'climax_both_no_leverage scene exists');
 
         // Staffer betrayal scenes
@@ -450,7 +453,7 @@ const TestRunner = {
         }
 
         // Ending scenes have correct properties
-        const endings = ['ending_status_quo', 'ending_cassandra', 'ending_pyrrhic', 'ending_incremental', 'ending_walked_away', 'ending_no_leverage', 'ending_miracle'];
+        const endings = ['ending_status_quo', 'ending_cassandra', 'ending_pyrrhic', 'ending_incremental', 'ending_walked_away', 'ending_no_leverage', 'ending_miracle', 'ending_realignment'];
         for (const endingId of endings) {
             const ending = STORY.scenes[endingId];
             this.assert(ending.isEnding === true, `${endingId} has isEnding=true`);
@@ -733,7 +736,11 @@ const TestRunner = {
             'toldAmaraTruth', 'choseRightsFrame', 'choseDataFrame',
             'preparedTestimony', 'calledCommitteeMembers', 'ralliedCoalition',
             'confrontedMindScale', 'focusedAmendment7', 'calledRecess',
-            'passedIntelToAllies', 'miracleVictory'
+            'passedIntelToAllies', 'miracleVictory',
+            // Conservative cast + Boyd whip-count deduction puzzle
+            'metMarcus', 'clueMarcusTie', 'clueBoydDonor', 'clueBoydHawk',
+            'whipBoydMonopoly', 'whipBoydSecurity', 'whipBoydSkip',
+            'boydFlipped', 'bipartisanWin'
         ];
         for (const flag of expectedFlags) {
             this.assert(
@@ -937,16 +944,21 @@ const TestRunner = {
         // act2_ignore routes to act2_final_prep (no consistency check)
         this.assertEqual(STORY.scenes.act2_ignore.nextScene, 'act2_final_prep', 'act2_ignore routes to act2_final_prep');
 
-        // Staffer scenes route to coalition_call_intro
+        // Staffer scenes route to marcus_intro (conservative cast), which leads to the coalition call
         this.assertEqual(
             STORY.scenes.staffer_trust.nextScene,
+            'marcus_intro',
+            'staffer_trust routes to marcus_intro'
+        );
+        this.assertEqual(
+            STORY.scenes.marcus_intro.nextScene,
             'coalition_call_intro',
-            'staffer_trust routes to coalition_call_intro'
+            'marcus_intro routes to coalition_call_intro'
         );
         this.assertEqual(
             STORY.scenes.staffer_dismiss.nextScene,
-            'coalition_call_intro',
-            'staffer_dismiss routes to coalition_call_intro'
+            'marcus_intro',
+            'staffer_dismiss routes to marcus_intro'
         );
     },
 
@@ -1287,6 +1299,132 @@ const TestRunner = {
         });
         this.assertEqual(withConfront.swings, 5, 'confrontedMindScale does not add swing');
         this.assert(!withConfront.passed, '5 swings: amendment fails outright');
+    },
+
+    // Test 17: Boyd whip-count deduction puzzle (the hardest puzzle)
+    testBoydPuzzle() {
+        console.log('\n--- Boyd Deduction Puzzle Tests ---');
+
+        // All Boyd-thread scenes exist
+        const boydScenes = [
+            'marcus_intro', 'whip_boyd_intro', 'whip_boyd_choice',
+            'boyd_security_router', 'boyd_flipped', 'boyd_noncommittal',
+            'boyd_backfire', 'boyd_skipped', 'climax_realignment', 'ending_realignment'
+        ];
+        for (const id of boydScenes) {
+            this.assert(STORY.scenes[id] !== undefined, `${id} scene exists`);
+        }
+
+        // Recess scenes feed into the Boyd sequence (not straight to the vote)
+        this.assertEqual(STORY.scenes.recess_lobby.nextScene, 'whip_boyd_intro', 'recess_lobby -> whip_boyd_intro');
+        this.assertEqual(STORY.scenes.recess_notes.nextScene, 'whip_boyd_intro', 'recess_notes -> whip_boyd_intro');
+        // Boyd sequence rejoins the vote
+        this.assertEqual(STORY.scenes.boyd_flipped.nextScene, 'markup_hearing_vote', 'boyd_flipped -> markup_hearing_vote');
+        this.assertEqual(STORY.scenes.boyd_skipped.nextScene, 'markup_hearing_vote', 'boyd_skipped -> markup_hearing_vote');
+
+        // The three framing choices set the right flags and route correctly
+        const choice = STORY.scenes.whip_boyd_choice;
+        this.assertEqual(choice.choices.length, 3, 'Boyd whip has 3 framing options');
+        const security = choice.choices.find(c => c.setFlags && c.setFlags.whipBoydSecurity);
+        const monopoly = choice.choices.find(c => c.setFlags && c.setFlags.whipBoydMonopoly);
+        const skip = choice.choices.find(c => c.setFlags && c.setFlags.whipBoydSkip);
+        this.assertEqual(security.nextDialogue, 'boyd_security_router', 'Security frame -> boyd_security_router');
+        this.assertEqual(monopoly.nextDialogue, 'boyd_backfire', 'Monopoly frame -> boyd_backfire (wrong)');
+        this.assertEqual(skip.nextDialogue, 'boyd_skipped', 'Skip -> boyd_skipped (wrong)');
+
+        // boyd_flipped is the only scene that sets boydFlipped
+        this.assert(STORY.scenes.boyd_flipped.setFlags.boydFlipped === true, 'boyd_flipped sets boydFlipped');
+        this.assert(!STORY.scenes.boyd_noncommittal.setFlags, 'boyd_noncommittal does not flip Boyd');
+
+        // DEDUCTION GATE: correct frame only flips Boyd if you have the hawk receipts
+        this.assertEqual(
+            routeScene('boyd_security', { clueBoydHawk: true }),
+            'boyd_flipped',
+            'Security frame + hawk clue -> boyd_flipped'
+        );
+        this.assertEqual(
+            routeScene('boyd_security', { clueBoydHawk: false }),
+            'boyd_noncommittal',
+            'Security frame WITHOUT hawk clue -> boyd_noncommittal (homework not done)'
+        );
+
+        // Clue seeding: Elena (trusted) reveals Marcus tie; Priya reveals donor + hawk;
+        // committee calls reveal hawk
+        this.assert(STORY.scenes.elena_trusted.setFlags.clueMarcusTie === true, 'elena_trusted seeds clueMarcusTie');
+        this.assert(STORY.scenes.priya_ally.setFlags.clueBoydDonor === true, 'priya_ally seeds clueBoydDonor');
+        this.assert(STORY.scenes.priya_ally.setFlags.clueBoydHawk === true, 'priya_ally seeds clueBoydHawk');
+        this.assert(STORY.scenes.act2_phones.setFlags.clueBoydHawk === true, 'act2_phones seeds clueBoydHawk');
+        this.assert(STORY.scenes.marcus_intro.setFlags.metMarcus === true, 'marcus_intro sets metMarcus');
+
+        // VOTE MATH: boydFlipped adds a swing
+        const boydSwing = getAmendment7Result({ boydFlipped: true });
+        this.assertEqual(boydSwing.swings, 1, 'boydFlipped adds one swing');
+
+        // Boyd as the deciding 5th vote: 4 swings (passes) -> +Boyd makes it fail
+        const fourSwings = getAmendment7Result({
+            seizedMoment: true, sharedWithPriya: true, focusedAmendment7: true,
+            calledCommitteeMembers: true
+        });
+        this.assertEqual(fourSwings.swings, 4, 'Four swings without Boyd');
+        this.assert(fourSwings.passed, 'Four swings: amendment passes (wrong deduction outcome)');
+        const fourPlusBoyd = getAmendment7Result({
+            seizedMoment: true, sharedWithPriya: true, focusedAmendment7: true,
+            calledCommitteeMembers: true, boydFlipped: true
+        });
+        this.assertEqual(fourPlusBoyd.swings, 5, 'Four swings + Boyd = 5 swings');
+        this.assert(!fourPlusBoyd.passed, 'Boyd as deciding vote: amendment fails');
+
+        // Six swings (full miracle play + Boyd) -> decisive bipartisan margin
+        const sixSwings = getAmendment7Result({
+            seizedMoment: true, sharedWithPriya: true, focusedAmendment7: true,
+            calledRecess: true, calledCommitteeMembers: true, boydFlipped: true
+        });
+        this.assertEqual(sixSwings.swings, 6, 'Six swings with Boyd');
+        this.assertEqual(sixSwings.margin, -3, 'Six swings: margin -3 (11-14)');
+        this.assert(!sixSwings.passed, 'Six swings: amendment fails decisively');
+
+        // ROUTING: realignment supersedes the miracle when Boyd is flipped and amendment fails
+        const realignFlags = {
+            boydFlipped: true,
+            seizedMoment: true, sharedWithPriya: true, focusedAmendment7: true,
+            calledRecess: true, calledCommitteeMembers: true,
+            trustedElena: true, elenaBurned: false,
+            alignedCivilRights: true, alignedDisability: true, alignedWatchdog: true
+        };
+        this.assertEqual(
+            routeScene('miracle_check', realignFlags),
+            'climax_realignment',
+            'Boyd flipped + amendment fails -> climax_realignment (beats miracle)'
+        );
+
+        // Boyd flipped but amendment still passes (too few other swings) -> ordinary climax
+        this.assertEqual(
+            routeScene('miracle_check', { boydFlipped: true, seizedMoment: true }),
+            'climax',
+            'Boyd flipped but amendment passes -> climax (no realignment)'
+        );
+
+        // climax_realignment sets bipartisanWin and routes to ending_check
+        this.assert(STORY.scenes.climax_realignment.setFlags.bipartisanWin === true, 'climax_realignment sets bipartisanWin');
+        this.assertEqual(STORY.scenes.climax_realignment.nextScene, 'ending_check', 'climax_realignment -> ending_check');
+
+        // ENDING: bipartisanWin -> ending_realignment, and it outranks miracle
+        this.assertEqual(
+            routeScene('ending_check', { bipartisanWin: true }),
+            'ending_realignment',
+            'bipartisanWin -> ending_realignment'
+        );
+        this.assertEqual(
+            routeScene('ending_check', { bipartisanWin: true, miracleVictory: true }),
+            'ending_realignment',
+            'Realignment outranks miracle in ending_check'
+        );
+        this.assertEqual(STORY.scenes.ending_realignment.endingType, 'Common Ground', 'ending_realignment has correct type');
+
+        // Conservative cast renders with distinct speaker styles
+        this.assertEqual(getSpeakerClass('Boyd'), 'speaker-boyd', 'Boyd has speaker-boyd class');
+        this.assertEqual(getSpeakerClass('Marcus'), 'speaker-marcus', 'Marcus has speaker-marcus class');
+        this.assertEqual(getSpeakerClass('Reese'), 'speaker-official', 'Reese rendered as committee official');
     }
 };
 

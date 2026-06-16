@@ -16,7 +16,7 @@ Capitol Hill: The Markup is a browser-based interactive narrative game about pol
 
 Four JS modules loaded via `<script>` tags (order matters):
 
-1. **`js/story.js`** (~3500 lines) — All game data: scene definitions (77 scenes), the `LOCATIONS` registry, `SPEAKER_STYLES`/`SPEAKER_GROUPS` mappings, `ROUTING_RULES`, and vote counting logic. This is the content layer.
+1. **`js/story.js`** (~4000 lines) — All game data: scene definitions (86 scenes), the `LOCATIONS` registry, `SPEAKER_STYLES`/`SPEAKER_GROUPS` mappings, `ROUTING_RULES`, and vote counting logic. This is the content layer.
 
 2. **`js/dialogue.js`** — `DialogueEngine` class. Renders dialogue with typewriter effect (30ms/char), manages portraits, renders choice buttons with staggered fade-in. Speaker name determines CSS class via the style mappings in story.js.
 
@@ -57,7 +57,7 @@ Four JS modules loaded via `<script>` tags (order matters):
   - Both allies + leverage → negotiate or walk away
   - Both allies, no leverage → deal falls through
   - Elena only / Priya only / Neither → limited options
-- `ending_check` router → Seven endings (see below)
+- `ending_check` router → Eight endings (see below)
 
 ## Key Systems
 
@@ -70,13 +70,14 @@ All story branches are controlled by boolean flags (~30). Flags are set via scen
 - `textFn: (flags) => string` — computed text from flags
 
 ### Router Scenes
-Scenes with `isRouter: true` and a `routerId` use `ROUTING_RULES` to branch based on flag state. Five routers: `coalition_outcome`, `elena_check`, `miracle_check`, `climax_choice_check`, `ending_check`. Each has ordered conditions — first match wins.
+Scenes with `isRouter: true` and a `routerId` use `ROUTING_RULES` to branch based on flag state. Key routers include `coalition_status`, `elena_check`, `boyd_security`, `miracle_check`, `climax_choice_check`, and `ending_check` (plus the two rebuttal checks). Each has ordered conditions — first match wins.
 
 ### Vote Counting
-`getAmendment7Result(flags)` in story.js computes a 25-member committee vote. Industry starts with 17 YES votes, 8 NO; each swing flips one yes to no. Some swings require flag combinations (e.g., `calledRecess && seizedMoment`). Max practical swings = 5. At 5 swings: 12-13, amendment fails outright (miracle path). At 4 or fewer: amendment passes. `sharedWithPriya` and `preparedTestimony` are mutually exclusive (time pressure fork), so both paths can reach 5 swings through different combos.
+`getAmendment7Result(flags)` in story.js computes a 25-member committee vote. Industry starts with 17 YES votes, 8 NO; each swing flips one yes to no. Some swings require flag combinations (e.g., `calledRecess && seizedMoment`). Max practical swings = 6. At 5 swings: 12-13, amendment fails outright by one (miracle path). At 6 swings (requires flipping Boyd via `boydFlipped`): 11-14, a decisive bipartisan defeat (realignment path). At 4 or fewer: amendment passes. `sharedWithPriya` and `preparedTestimony` are mutually exclusive (time pressure fork), so both paths can reach 5 swings through different combos. When changing vote math, update BOTH the story.js vote function AND the vote-count tests in tests.js.
 
-### Seven Endings
-Determined by `ending_check` router. Seven endings:
+### Eight Endings
+Determined by `ending_check` router (checked in priority order, first match wins). Eight endings:
+- **Common Ground** (`ending_realignment`) — Bipartisan defeat of Amendment 7 (6 swings; flipped Rep. Boyd by making the safety case on national-security terms he already holds). The hardest/best ending, gated behind the Boyd whip-count deduction puzzle. Set via `bipartisanWin`. Outranks the miracle. (Scene id and flag keep the `realignment`/`bipartisanWin` names; user-facing label is "Common Ground" — Boyd voting his own priorities is treated as ordinary coalition work, not a sea-change.)
 - **The Breakthrough** (`ending_miracle`) — Amendment 7 defeated outright (5 swings). Requires miracle path.
 - **Incremental** (`ending_incremental`) — Both allies, negotiated a compromise.
 - **Walked Away** (`ending_walked_away`) — Both allies, walked away from the deal.
@@ -84,6 +85,16 @@ Determined by `ending_check` router. Seven endings:
 - **Cassandra** (`ending_cassandra`) — Elena only, she warned you but couldn't help enough.
 - **Pyrrhic** (`ending_pyrrhic`) — Priya only, amendment passes, fight continues.
 - **Status Quo** (`ending_status_quo`) — No allies or burned Elena, nothing changes.
+
+### Conservative Cast + Boyd Whip-Count Deduction Puzzle (the hardest puzzle)
+Three conservative figures add ideological texture: **Rep. Reese** (R, innovation-first, hard YES on Amendment 7 — unflippable, China-race absolutist), **Rep. Boyd** (R, populist, the gettable swing vote), and **Marcus Halloran** (a MindScale-tied operative who "plays both sides"). They are written to be coherent and persuasive, not strawmen — the pro-safety case is reframed through national-security/sovereignty/anti-Big-Tech-populism.
+
+The puzzle is a **hidden-information deduction**: three sources each give a contradictory read on how to flip Boyd. Exactly one is right.
+- **Elena** (insider, but self-interested): anti-monopoly frame → *backfires* (Boyd's donor is Prometheus; he hears a rival's play).
+- **Marcus** (paid by MindScale): "skip Boyd, lost cause" → *misdirection* (keeps a swing vote off the table for his client).
+- **Priya / committee homework**: national-security frame → *correct*.
+
+Clues gathered across the game let the player tell them apart: `clueMarcusTie` (eliminates Marcus; from `elena_trusted`), `clueBoydDonor` (poisons the monopoly frame; from `priya_ally`), `clueBoydHawk` (confirms security; from `priya_ally` or `act2_phones` committee calls). At the Wednesday commit (`whip_boyd_choice`, inserted between the recess scenes and the vote), choosing the **security** frame routes through `boyd_security_router`: it only sets `boydFlipped` if the player also has `clueBoydHawk` (the receipts to back it up) — otherwise Boyd stays noncommittal. `boydFlipped` adds a 6th vote swing. Wrong deduction (monopoly/skip) or no homework → Boyd stays a no, and a close vote can flip from fail to pass.
 
 ## Testing
 

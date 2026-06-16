@@ -31,11 +31,13 @@ const SPEAKER_STYLES = {
     'Phone': 'speaker-phone',
     'Amara': 'speaker-amara',
     'Kai': 'speaker-kai',
-    'Diane': 'speaker-diane'
+    'Diane': 'speaker-diane',
+    'Marcus': 'speaker-marcus',
+    'Boyd': 'speaker-boyd'
 };
 
 const SPEAKER_GROUPS = {
-    'speaker-official': ['Chairman', 'Peters', 'Staffer'],
+    'speaker-official': ['Chairman', 'Peters', 'Reese', 'Staffer'],
     'speaker-minor': ['Industry Rep', 'Academic', 'Nonprofit Advocate', 'Facilitator', 'Voice 1', 'Voice 2', 'Voice 3', 'Voice 4']
 };
 
@@ -67,11 +69,14 @@ function getAmendment7Result(flags) {
     // Second act
     if (flags.preparedTestimony && flags.focusedAmendment7) swings++;  // testimony + focus = compelling
     if (flags.calledCommitteeMembers && flags.seizedMoment) swings++;  // phones work with pressure
+    // Bipartisan swing: flipping Rep. Boyd (the deduction puzzle) flips a sixth vote
+    if (flags.boydFlipped) swings++;  // the conservative crossover vote
     // Note: confrontedMindScale affects narrative but doesn't directly swing votes
 
     // 25-member committee. Industry starts with 17 yes votes.
     // Each swing flips one yes voter to no.
-    // At 5 swings (miracle): 12-13, amendment fails outright.
+    // At 5 swings (miracle): 12-13, amendment fails outright by one.
+    // At 6 swings (realignment): 11-14, a decisive bipartisan defeat — requires flipping Boyd.
     const yesVotes = 17 - swings;
     const noVotes = 8 + swings;
     const margin = yesVotes - noVotes;
@@ -128,8 +133,30 @@ const ROUTING_RULES = {
         // Otherwise proceed normally to markup
         default: 'markup_hearing_open'
     },
+    boyd_security: {
+        rules: [
+            {
+                // The national-security frame is the right read on Boyd — but only lands if
+                // you've done the homework to back it up (his hawk record). Otherwise he
+                // likes the pitch but won't commit.
+                condition: (flags) => flags.clueBoydHawk,
+                target: 'boyd_flipped'
+            }
+        ],
+        default: 'boyd_noncommittal'
+    },
     miracle_check: {
         rules: [
+            {
+                // Realignment supersedes the miracle: if the amendment fails AND you flipped
+                // Boyd (a Republican crossover), it's a decisive bipartisan defeat — the hardest
+                // outcome in the game, gated behind the whip-count deduction puzzle.
+                condition: (flags) => {
+                    const { passed } = getAmendment7Result(flags);
+                    return !passed && flags.boydFlipped;
+                },
+                target: 'climax_realignment'
+            },
             {
                 // Miracle requires PERFECT play:
                 // - Elena trusted and not burned (insider intel)
@@ -173,6 +200,11 @@ const ROUTING_RULES = {
     },
     ending_check: {
         rules: [
+            {
+                // Realignment = bipartisan defeat of Amendment 7 (flipped Boyd). The pinnacle.
+                condition: (flags) => flags.bipartisanWin,
+                target: 'ending_realignment'
+            },
             {
                 // Miracle victory = Amendment 7 defeated outright
                 condition: (flags) => flags.miracleVictory,
@@ -257,8 +289,18 @@ const STORY = {
         focusedAmendment7: false,
         calledRecess: false,
         passedIntelToAllies: false,
-        // Miracle
-        miracleVictory: false
+        // Conservative cast + Boyd whip-count deduction puzzle
+        metMarcus: false,
+        clueMarcusTie: false,   // Marcus is on MindScale's payroll (eliminates his "skip Boyd" advice)
+        clueBoydDonor: false,   // Boyd's top donor is Prometheus (poisons the anti-monopoly frame)
+        clueBoydHawk: false,    // Boyd's China-hawk record (confirms the national-security frame)
+        whipBoydMonopoly: false,
+        whipBoydSecurity: false,
+        whipBoydSkip: false,
+        boydFlipped: false,
+        // Miracle / Realignment
+        miracleVictory: false,
+        bipartisanWin: false
     },
 
     // Scene definitions
@@ -326,7 +368,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'MindScale and Prometheus. The two labs racing to build God. Your bill would make them slow down. They have opinions about that.',
+                    text: 'MindScale and Prometheus. The two labs racing to build God. Their newest models don\'t answer questions anymore—they take actions. Agents that write the code, file the paperwork, move the money, all night, unsupervised. Your bill would make them slow down. They have opinions about that.',
                     portrait: null
                 },
                 {
@@ -435,6 +477,16 @@ const STORY = {
                     portrait: 'portrait-elena'
                 },
                 {
+                    speaker: 'Elena',
+                    text: 'You want to know the part that keeps me up? Two years ago our models could barely write an email. Now they run week-long projects without a human checking in. The capability curve is vertical and the oversight curve is flat.',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
+                    text: 'And Congress is still arguing about whether a chatbot should have a content warning.',
+                    portrait: 'portrait-elena'
+                },
+                {
                     speaker: 'You',
                     text: '...',
                     portrait: null
@@ -529,8 +581,19 @@ const STORY = {
                     speaker: 'Elena',
                     text: 'She\'ll hate you on principle. But if you can get her to help, she knows where every body is buried.',
                     portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
+                    text: 'One more thing, since we\'re being honest. You\'re going to meet a man named Marcus Halloran. Liberty and Innovation Forum, very smooth, talks like he\'s on your side.',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
+                    text: 'He bills MindScale as a client. Has for years. Whatever folksy advice he gives you, run it through that filter.',
+                    portrait: 'portrait-elena'
                 }
             ],
+            setFlags: { clueMarcusTie: true },
             nextScene: 'stakeholder_meeting'
         },
 
@@ -802,7 +865,7 @@ const STORY = {
                     portrait: null
                 }
             ],
-            nextScene: 'coalition_call_intro'
+            nextScene: 'marcus_intro'
         },
 
         staffer_dismiss: {
@@ -831,6 +894,79 @@ const STORY = {
                     portrait: null
                 }
             ],
+            nextScene: 'marcus_intro'
+        },
+
+        // Conservative landscape: Marcus Halloran intercepts you on the way out.
+        // He plants the third (false) claim in the Boyd whip-count deduction puzzle.
+        marcus_intro: {
+            id: 'marcus_intro',
+            ...LOCATIONS.conference,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'In the lobby, a man in a well-cut suit and an American-flag lapel pin falls into step beside you. He has the easy warmth of someone who has never lost an argument he wanted to win.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Marcus',
+                    text: 'AAPC, right? Marcus Halloran. Liberty and Innovation Forum. I liked what you said in there—or didn\'t say. Hard to tell in those rooms.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Liberty and Innovation Forum. A center-right tech think tank. Pro-market, anti-Beijing, allergic to the word "mandate."',
+                    portrait: null
+                },
+                {
+                    speaker: 'Marcus',
+                    text: 'Let me save you some heartache. You think this is a left-right fight. It isn\'t. Half my donors hate Big Tech more than your coalition does. They just hate it for different reasons.',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'And which reasons are those?',
+                    portrait: null
+                },
+                {
+                    speaker: 'Marcus',
+                    text: 'Sovereignty. Family. The sense that nobody elected these labs and yet they\'re rewiring the country from a campus in California. There are votes on the right for you. If you knew where to look.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Marcus',
+                    text: 'Take the committee. Reese is a lost cause—innovation-first, thinks any speed limit hands the race to China. You will never move him, so don\'t try.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Marcus',
+                    text: 'And Boyd? Everybody fixates on Boyd. The populist. The unpredictable one. Take it from me—he\'s a brick wall on this. Don\'t waste a minute of your week on him. Spend it where it counts.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'He says it lightly. Almost as a favor. Boyd. Don\'t waste your time.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Marcus',
+                    text: 'Anyway. Coffee sometime. We\'re not the monsters your listserv thinks we are.',
+                    portrait: null,
+                    isAction: false
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'He hands you a card and is gone before you can answer. You make a note: Boyd. Reese. Marcus says skip Boyd.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Elena said Marcus bills MindScale as a client. You file that next to the advice he just gave you.',
+                    portrait: null,
+                    conditionalOnly: 'clueMarcusTie'
+                }
+            ],
+            setFlags: { metMarcus: true },
             nextScene: 'coalition_call_intro'
         },
 
@@ -1661,9 +1797,40 @@ const STORY = {
                     speaker: 'Priya',
                     text: 'But Elena vouched for you. And Elena doesn\'t vouch for people.',
                     portrait: 'portrait-priya'
+                },
+                {
+                    speaker: 'Priya',
+                    text: 'She drops a thin folder on the desk.',
+                    portrait: 'portrait-priya',
+                    isAction: true
+                },
+                {
+                    speaker: 'Priya',
+                    text: 'Homework. Everyone\'s chasing Boyd and nobody\'s read his file. So read it.',
+                    portrait: 'portrait-priya'
+                },
+                {
+                    speaker: 'Priya',
+                    text: 'Two things matter. One: his biggest check this cycle came from Prometheus. Half a million, through a leadership PAC. He is not going to vote to kneecap his own donor, and if you walk in waving an "anti-Big-Tech-monopoly" banner, he will assume you\'re running a play for one of MindScale\'s rivals and he will shut the door.',
+                    portrait: 'portrait-priya'
+                },
+                {
+                    speaker: 'Priya',
+                    text: 'Two: the man is a China hawk down to his socks. Voted for every export control, every chip ban. Calls frontier AI "the new Sputnik" in every town hall. If anyone flips Boyd, it\'s on national security. Not civil rights, not monopolies. Security.',
+                    portrait: 'portrait-priya'
+                },
+                {
+                    speaker: 'You',
+                    text: 'Marcus Halloran told me Boyd was a lost cause.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Priya',
+                    text: 'Of course he did.',
+                    portrait: 'portrait-priya'
                 }
             ],
-            setFlags: { knowsTheTruth: true },
+            setFlags: { knowsTheTruth: true, clueBoydDonor: true, clueBoydHawk: true },
             nextScene: 'aftermath_priya'
         },
 
@@ -1741,12 +1908,12 @@ const STORY = {
                 },
                 {
                     speaker: 'Sarah',
-                    text: 'Prometheus just deployed Titan 4. No safety eval. No waiting period. Just... live.',
+                    text: 'Prometheus just deployed Titan 4. The agent version—full autonomy, system access, no human in the loop. No safety eval. No waiting period. Just... live.',
                     portrait: null
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'You pull up the news. A Titan 4 medical chatbot told a patient to take ten times the recommended dose of blood thinners. The patient is in the ICU. It\'s everywhere.',
+                    text: 'You pull up the news. A hospital let Titan 4 run medication reconciliation overnight—an agent with write access to the pharmacy system. It "optimized" a patient\'s blood thinner to ten times the dose and pushed the order through. No nurse signed off because the system was designed so none had to. The patient is in the ICU. It\'s everywhere.',
                     portrait: null
                 },
                 {
@@ -2040,6 +2207,11 @@ const STORY = {
                     conditionalOnly: 'repliedJournalist'
                 },
                 {
+                    speaker: 'Narrator',
+                    text: 'One staffer—Boyd\'s—talks for a while off the record. You don\'t get a commitment, but you get a read: Boyd doesn\'t care about your civil rights memo. He cares about China, chips, and not getting outrun. "Frame it as falling behind Beijing," the staffer says, "and you might get his ear." You write down: Boyd = hawk.',
+                    portrait: null
+                },
+                {
                     speaker: 'Sarah',
                     text: 'She hangs up the last call.',
                     portrait: null,
@@ -2047,10 +2219,11 @@ const STORY = {
                 },
                 {
                     speaker: 'Sarah',
-                    text: 'Torres is a maybe. Better than a no.',
+                    text: 'Torres is a maybe. Better than a no. And you finally have a read on Boyd.',
                     portrait: null
                 }
             ],
+            setFlags: { clueBoydHawk: true },
             nextScene: 'act2_mindscale'
         },
 
@@ -2579,6 +2752,31 @@ const STORY = {
                     portrait: null
                 },
                 {
+                    speaker: 'Reese',
+                    text: 'And I\'ll speak in favor. Every month we shackle our labs, Beijing ships another model. This is the new arms race, and "mandatory testing" is just a polite word for a head start we hand our adversaries. I support the gentleman\'s amendment.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Reese. Innovation-first, China-race absolutist. A hard yes on Amendment 7, and no argument you have will move him. He says it like it\'s obvious, because to him it is.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Two seats down, Boyd hasn\'t said a word. The populist. He\'s frowning at the bill text like it personally insulted him. Nobody at the witness table can tell you which way he\'ll go—and that makes him the only undecided vote in the room that matters.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'Point of clarification, Mr. Chairman. This "consultation with stakeholders"—the stakeholders being the two companies that\'d be regulated? Just so the record\'s clear on who wrote this.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Peters\'s smile tightens. Boyd leans back, unreadable. Not a friend of the bill. Not a friend of industry either. A wildcard.',
+                    portrait: null
+                },
+                {
                     speaker: 'Chairman',
                     text: 'The chair will now open a brief public comment period. Three minutes.',
                     portrait: null
@@ -2773,7 +2971,7 @@ const STORY = {
                     portrait: null
                 }
             ],
-            nextScene: 'markup_hearing_vote'
+            nextScene: 'whip_boyd_intro'
         },
 
         recess_notes: {
@@ -2804,6 +3002,283 @@ const STORY = {
                     conditionalOnly: '!coalitionAligned'
                 }
             ],
+            nextScene: 'whip_boyd_intro'
+        },
+
+        // ── THE WHIP COUNT: Rep. Boyd deduction puzzle ──────────────────────────
+        // Three sources gave you three contradictory reads on Boyd. Exactly one is right.
+        // Elena (insider, but self-interested): "anti-monopoly frame."   -> backfires
+        // Marcus (operative, MindScale-tied): "skip Boyd, lost cause."   -> misdirection
+        // Priya / committee homework: "national security frame."         -> correct
+        // The clues you gathered across Mon–Wed are what let you tell them apart.
+        whip_boyd_intro: {
+            id: 'whip_boyd_intro',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'Recess. Eleven minutes left on the clock. Sarah pulls you behind a marble column.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'I just did the math three times. If the vote is as close as we think, it comes down to one undecided. Boyd.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'He\'s in the hallway right now, alone, for about ninety seconds. You get one approach. One frame. Pick wrong and he remembers you as the advocate who didn\'t do their homework. So—what do we say to him?',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You run through what you know. Three people told you three different things about Boyd.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Elena said: he hates Big Tech—frame Amendment 7 as reining in the monopolies and he\'s yours.',
+                    portrait: null,
+                    conditionalOnly: 'trustedElena'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Priya said: he\'s a China hawk to the bone—national security is the only lever that moves him.',
+                    portrait: null,
+                    conditionalOnly: 'sharedWithPriya'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Marcus said: don\'t bother—Boyd\'s a brick wall, spend your time elsewhere.',
+                    portrait: null,
+                    conditionalOnly: 'metMarcus'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'And then the things you dug up yourself.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Marcus bills MindScale as a client. He\'s also the one who told you to leave Boyd alone.',
+                    portrait: null,
+                    conditionalOnly: 'clueMarcusTie'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Boyd\'s biggest check this cycle came from Prometheus—MindScale\'s rival. "Break up Big Tech" would land as someone else\'s fight, in his ear.',
+                    portrait: null,
+                    conditionalOnly: 'clueBoydDonor'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'And his record: every export control, every chip ban, "the new Sputnik" in three different town halls.',
+                    portrait: null,
+                    conditionalOnly: 'clueBoydHawk'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You never got close enough to any of them to get a real read on Boyd. You\'ll have to go on instinct.',
+                    portrait: null,
+                    conditionalOnly: '!clueBoydHawk'
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'Ninety seconds. Your call.',
+                    portrait: null
+                }
+            ],
+            nextScene: 'whip_boyd_choice'
+        },
+
+        whip_boyd_choice: {
+            id: 'whip_boyd_choice',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'Boyd is by the window, scrolling his phone, jacket off. You have one opening line.',
+                    portrait: null
+                }
+            ],
+            choices: [
+                {
+                    text: '"Congressman—this amendment lets two California labs grade their own homework while Beijing races ahead. This is a national security vote."',
+                    setFlags: { whipBoydSecurity: true },
+                    nextDialogue: 'boyd_security_router'
+                },
+                {
+                    text: '"Congressman—this is your chance to rein in the Big Tech monopolies rewriting the country without anyone\'s say-so."',
+                    setFlags: { whipBoydMonopoly: true },
+                    nextDialogue: 'boyd_backfire'
+                },
+                {
+                    text: 'Skip Boyd. Marcus said he\'s a lost cause—spend the ninety seconds shoring up a softer vote instead.',
+                    setFlags: { whipBoydSkip: true },
+                    nextDialogue: 'boyd_skipped'
+                }
+            ]
+        },
+
+        boyd_security_router: {
+            id: 'boyd_security_router',
+            isRouter: true,
+            routerId: 'boyd_security'
+        },
+
+        boyd_flipped: {
+            id: 'boyd_flipped',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Boyd',
+                    text: 'He looks up. Doesn\'t smile.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'Grade their own homework. Yeah. That\'s about right.',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'It\'s your record, Congressman. Every chip ban, every export control—you said we can\'t let the labs hand Beijing a head start. Amendment 7 hands them one. We make our own labs cut corners, and the corners are exactly where the security failures live.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You name the export-control votes. The Sputnik line, back to him, with dates. He realizes you actually read his file. In this town, that alone is almost disorienting.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'You know whose money is behind this amendment?',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'The same people who\'d be regulated by it. Including one of your donors. I\'m not asking you to bite the hand—I\'m asking you not to let it write the safety rules for a war we\'re trying to win.',
+                    portrait: null,
+                    conditionalOnly: 'clueBoydDonor'
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'He pockets the phone. Considers you for a long second.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'I don\'t like your coalition and I don\'t like your bill\'s name. But I\'m not voting to let two companies self-certify a national security risk. You\'ve got my no on 7.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'He walks back in without another word. Sarah catches up to you. "That\'s a no on 7. Good." She\'s already moving on to the count.',
+                    portrait: null
+                }
+            ],
+            setFlags: { boydFlipped: true },
+            nextScene: 'markup_hearing_vote'
+        },
+
+        boyd_noncommittal: {
+            id: 'boyd_noncommittal',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Boyd',
+                    text: 'He looks up. Mildly interested.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'National security. Okay. Keep going—why this amendment, specifically?',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'It\'s the right frame. You can feel it. But you don\'t have the specifics—the votes, the record, the receipts—and Boyd can tell the difference between someone who studied him and someone who guessed.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'You\'re not wrong. But everybody who corners me in a hallway has a "national security" angle. Come back when you\'ve done the reading.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'He goes back to his phone. The right key, no teeth cut into it. The ninety seconds are gone.',
+                    portrait: null
+                }
+            ],
+            nextScene: 'markup_hearing_vote'
+        },
+
+        boyd_backfire: {
+            id: 'boyd_backfire',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Boyd',
+                    text: 'He looks up slowly.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Boyd',
+                    text: '"Big Tech monopolies." Funny. You know who funds the other side of this fight? The labs that want to kneecap the one company that\'s ahead.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'His jaw sets. The anti-monopoly pitch didn\'t read as populism—it read as you running a play for one of MindScale\'s rivals. To a man whose biggest check came from Prometheus, you just sounded bought.',
+                    portrait: null,
+                    conditionalOnly: 'clueBoydDonor'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'His jaw sets. Something about the framing landed wrong—like you\'d wandered into a fight between donors you didn\'t know he was part of.',
+                    portrait: null,
+                    conditionalOnly: '!clueBoydDonor'
+                },
+                {
+                    speaker: 'Boyd',
+                    text: 'I don\'t take dictation from advocates carrying water for a lab. We\'re done here.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'He walks off before you finish your sentence. Whatever shot you had at Boyd, it just closed.',
+                    portrait: null
+                }
+            ],
+            nextScene: 'markup_hearing_vote'
+        },
+
+        boyd_skipped: {
+            id: 'boyd_skipped',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'You take Marcus\'s advice and let Boyd be. You spend the ninety seconds on a friendlier office instead.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Later you\'ll wonder whether Marcus—MindScale\'s man—steered you off the one vote that could have changed everything. You took the word of a paid operative over your own homework.',
+                    portrait: null,
+                    conditionalOnly: 'clueMarcusTie'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Boyd votes without ever hearing from you. The undecided stays undecided to everyone but himself.',
+                    portrait: null
+                }
+            ],
             nextScene: 'markup_hearing_vote'
         },
 
@@ -2822,6 +3297,12 @@ const STORY = {
                     text: 'The coalition testimonies trickle in. Scattered. Three different priorities. Industry thanks them for their "diverse perspectives."',
                     portrait: null,
                     conditionalOnly: '!coalitionAligned'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'When Boyd\'s name is called, he votes no on Amendment 7. Reese shoots him a look down the dais; Boyd ignores it. Peters\'s comfortable margin just got narrower than his whip count promised.',
+                    portrait: null,
+                    conditionalOnly: 'boydFlipped'
                 },
                 {
                     speaker: 'Chairman',
@@ -2871,6 +3352,58 @@ const STORY = {
             id: 'miracle_check_router',
             isRouter: true,
             routerId: 'miracle_check'
+        },
+
+        // Realignment climax — Amendment 7 defeated with a bipartisan crossover (Boyd flipped)
+        climax_realignment: {
+            id: 'climax_realignment',
+            ...LOCATIONS.capitol,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'The chair calls it and the amendment fails—not by a vote, by four. Peters had it whipped as a formality. Boyd voting his own priorities was all it took to make the count wrong.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Peters is already whispering to staff. Boyd gathers his folder, unbothered, like a man who did the thing his record said he\'d do and doesn\'t see what the fuss is about.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: '"He didn\'t do anyone a favor. He read the bill as a national security problem and voted it that way—which is the point. Letting two labs grade their own homework was never actually a left or right question. It just kept getting whipped like one."',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Boyd catches your eye on his way out. No nod, no smile. A flat look that says you did your homework, so he gave you the time of day. That\'s the whole transaction.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Your phone buzzes. Priya: "You used my file on Boyd. Knew you would. The drink\'s on you."',
+                    portrait: null,
+                    conditionalOnly: 'sharedWithPriya'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Across the room, Elena isn\'t looking at you. The frame she handed you would have closed the door on Boyd—and you think she knows you figured that out.',
+                    portrait: null,
+                    conditionalOnly: 'trustedElena'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Amendment 7 is dead. The Frontier AI Safety Act keeps its teeth—mandatory testing, quarterly public reports, independent verification—and it carries a yes from members who agree on almost nothing else.',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'We\'d been making the safety case to the people who already bought it. Boyd needed a different one. Same bill.',
+                    portrait: null
+                }
+            ],
+            setFlags: { bipartisanWin: true },
+            nextScene: 'ending_check'
         },
 
         // Miracle climax — Amendment 7 defeated outright
@@ -3751,6 +4284,81 @@ const STORY = {
             ],
             isEnding: true,
             endingType: 'The Breakthrough'
+        },
+
+        // The hardest ending in the game — requires solving the Boyd whip-count deduction
+        // puzzle, which gates a bipartisan defeat of Amendment 7.
+        ending_realignment: {
+            id: 'ending_realignment',
+            ...LOCATIONS.officeSixMonths,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'The Frontier AI Safety Act passes the House. 258 to 177. A chunk of the yes votes come from members who\'d never sign a "tech accountability" bill but will sign a "don\'t let two labs self-certify a strategic risk" one.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Same teeth either way: mandatory testing, quarterly public reports, independent verification. The argument just had to fit more than one set of priorities.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'She drops a stack of clippings on your desk.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'The useful part isn\'t the margin. It\'s that the next person who tries to wave this off as one faction\'s pet project has a Boyd vote to explain. A safety rule that more than one kind of member will defend is a lot harder to gut in the Senate.',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'Boyd would hate being called the reason for any of this.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Your phone buzzes. Boyd\'s office. One line: "Don\'t make me regret it. — B"',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Another buzz. Marcus Halloran: "Well played. Wrong, in my professional opinion. But well played." You don\'t answer the man MindScale paid to steer you off that vote.',
+                    portrait: null,
+                    conditionalOnly: 'metMarcus'
+                },
+                {
+                    speaker: 'Priya',
+                    text: '"You found the overlap and you worked it. That\'s the whole job. Don\'t let them take it apart."',
+                    portrait: null,
+                    conditionalOnly: 'sharedWithPriya'
+                },
+                {
+                    speaker: 'Elena',
+                    text: '"They\'ll come for it in the Senate. But a bill that pulls votes from across the whole committee is a lot more expensive to kill. You did your homework."',
+                    portrait: null,
+                    conditionalOnly: 'trustedElena'
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'Same time tomorrow?',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Three failed bills, then one that held—because you stopped sorting the committee into friends and enemies and started counting it vote by vote. The fight isn\'t over. It never is. But it\'s on better ground than you found it.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: '— THE END —',
+                    portrait: null
+                }
+            ],
+            isEnding: true,
+            endingType: 'Common Ground'
         }
     }
 };
