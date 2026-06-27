@@ -53,6 +53,7 @@ const TestRunner = {
         this.testMiraclePath();
         this.testVoteCount();
         this.testBoydPuzzle();
+        this.testChampionAndCoffee();
 
         console.log(`\n${'='.repeat(50)}`);
         console.log(`Tests: ${this.passed} passed, ${this.failed} failed`);
@@ -1425,6 +1426,65 @@ const TestRunner = {
         this.assertEqual(getSpeakerClass('Boyd'), 'speaker-boyd', 'Boyd has speaker-boyd class');
         this.assertEqual(getSpeakerClass('Marcus'), 'speaker-marcus', 'Marcus has speaker-marcus class');
         this.assertEqual(getSpeakerClass('Reese'), 'speaker-official', 'Reese rendered as committee official');
+    },
+
+    // Test 18: Internal Champion (Rep. Okafor) + Coffee Motif
+    testChampionAndCoffee() {
+        console.log('\n--- Champion & Coffee Tests ---');
+
+        // New flags are declared in initial state
+        this.assert('hadCoffee' in STORY.initialFlags, 'hadCoffee flag declared');
+        this.assert('championOnboard' in STORY.initialFlags, 'championOnboard flag declared');
+        this.assert('championWhipping' in STORY.initialFlags, 'championWhipping flag declared');
+
+        // Champion scenes exist
+        for (const id of ['champion_intro', 'champion_intro_whip', 'champion_intro_clean']) {
+            this.assert(STORY.scenes[id] !== undefined, `${id} scene exists`);
+        }
+
+        // Okafor has a distinct speaker style
+        this.assertEqual(getSpeakerClass('Okafor'), 'speaker-okafor', 'Okafor maps to speaker-okafor');
+
+        // COFFEE: intro establishes the motif and sets hadCoffee, then routes to the champion
+        this.assert(STORY.scenes.intro.setFlags && STORY.scenes.intro.setFlags.hadCoffee === true, 'intro sets hadCoffee');
+        this.assertEqual(STORY.scenes.intro.nextScene, 'champion_intro', 'intro -> champion_intro');
+
+        // The champion is met on the main path before the rest of Day 1
+        this.assertEqual(STORY.scenes.champion_intro_whip.nextScene, 'the_filibuster', 'champion_intro_whip -> the_filibuster');
+        this.assertEqual(STORY.scenes.champion_intro_clean.nextScene, 'the_filibuster', 'champion_intro_clean -> the_filibuster');
+
+        // Both choices commit the champion; only the whip choice does the homework
+        const ci = STORY.scenes.champion_intro;
+        this.assertEqual(ci.choices.length, 2, 'champion_intro has 2 choices');
+        const whip = ci.choices.find(c => c.nextDialogue === 'champion_intro_whip');
+        const clean = ci.choices.find(c => c.nextDialogue === 'champion_intro_clean');
+        this.assert(whip.setFlags.championOnboard === true, 'whip choice sets championOnboard');
+        this.assert(clean.setFlags.championOnboard === true, 'clean choice also sets championOnboard');
+        this.assert(whip.setFlags.championWhipping === true, 'whip choice sets championWhipping');
+        this.assert(!clean.setFlags.championWhipping, 'clean choice does not set championWhipping');
+
+        // The champion's whip count is a third legitimate source of the Boyd hawk clue
+        this.assert(whip.setFlags.clueBoydHawk === true, 'whip choice seeds clueBoydHawk (homework via the champion)');
+        this.assert(!clean.setFlags.clueBoydHawk, 'clean choice does not seed clueBoydHawk');
+
+        // The clue from the champion still has to be deduced into a flip at the whip-count commit
+        this.assertEqual(
+            routeScene('boyd_security', { clueBoydHawk: true }),
+            'boyd_flipped',
+            'Champion-sourced hawk clue + security frame -> boyd_flipped'
+        );
+
+        // Okafor shows up where it matters: defending the bill at markup and at the vote
+        const openSpeakers = STORY.scenes.markup_hearing_open.dialogue.map(d => d.speaker);
+        this.assert(openSpeakers.includes('Okafor'), 'Okafor speaks at the markup hearing');
+        const voteSpeakers = STORY.scenes.markup_hearing_vote.dialogue.map(d => d.speaker);
+        this.assert(voteSpeakers.includes('Okafor'), 'Okafor is present at the Amendment 7 vote');
+
+        // Champion + coffee pay off in the endings
+        for (const id of ['ending_realignment', 'ending_miracle', 'ending_status_quo']) {
+            const speakers = STORY.scenes[id].dialogue.map(d => d.speaker);
+            this.assert(speakers.includes('Okafor'), `${id} pays off the champion`);
+        }
     }
 };
 

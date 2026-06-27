@@ -33,7 +33,8 @@ const SPEAKER_STYLES = {
     'Kai': 'speaker-kai',
     'Diane': 'speaker-diane',
     'Marcus': 'speaker-marcus',
-    'Boyd': 'speaker-boyd'
+    'Boyd': 'speaker-boyd',
+    'Okafor': 'speaker-okafor'
 };
 
 const SPEAKER_GROUPS = {
@@ -267,6 +268,11 @@ const STORY = {
         foundEvidence: false,
         knowsTheTruth: false,
         spokeUp: false,
+        // Running on fumes and caffeine
+        hadCoffee: false,
+        // Your internal champion on the committee
+        championOnboard: false,
+        championWhipping: false,
         negotiated: false,
         walkedAway: false,
         repliedJournalist: false,
@@ -322,7 +328,17 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Sarah drops another stack.',
+                    text: 'Sarah drops another stack. Then a paper cup, lid on, steam finding the seam.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'Drink that before you read anything. Last time you skipped it you cited the wrong subsection in front of a reporter.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You drink it. The AAPC runs on three things: stale outrage, borrowed offices, and the coffee. Take away the first two and you still have a movement. Take away the coffee and you have a room full of people asleep at a markup.',
                     portrait: null
                 },
                 {
@@ -384,6 +400,120 @@ const STORY = {
                 {
                     speaker: 'Sarah',
                     text: 'In this town? Always. But also, free drinks.',
+                    portrait: null
+                }
+            ],
+            setFlags: { hadCoffee: true },
+            nextScene: 'champion_intro'
+        },
+
+        champion_intro: {
+            id: 'champion_intro',
+            day: 1,
+            ...LOCATIONS.office,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'Your desk phone lights up before you\'ve finished the cup. Internal line. Sarah mouths the name and her eyebrows go up: the Congresswoman herself, not a staffer.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'It\'s Okafor. I\'ve got ninety seconds between votes, so I\'ll be quick.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Representative Gloria Okafor. Lead sponsor of the Frontier AI Safety Act, sits on the committee that marks it up Wednesday. She wrote the bill you\'ve spent three years and two failures trying to pass. Inside that room you have exactly one person who can stand up and defend it. This is her.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'I can carry this bill on the floor. I can\'t carry it alone. I get one voice in that room and a stopwatch; you get the whole week to build the case I read into the record. So tell me what you\'re bringing me, because right now I\'m short the votes.',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'How short?',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'They\'ll come at the bill amendment by amendment to gut it quietly. Seven\'s the one that matters — swaps real testing for a promise. I count seventeen yes on it today. I need to peel off five, and I don\'t have five. Find me where they are.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'And one more thing. There\'s a swing vote I can\'t read myself without it looking like a sponsor twisting arms. Do you want me quietly running a whip count on the gettable Republicans this week, or do you want me saving every ounce of capital for the floor fight?',
+                    portrait: null
+                }
+            ],
+            choices: [
+                {
+                    text: 'Run the whip count. I need to know who\'s actually gettable before Wednesday.',
+                    setFlags: { championOnboard: true, championWhipping: true, clueBoydHawk: true },
+                    nextDialogue: 'champion_intro_whip'
+                },
+                {
+                    text: 'Save your capital. Stay clean and let me do the digging from the outside.',
+                    setFlags: { championOnboard: true },
+                    nextDialogue: 'champion_intro_clean'
+                }
+            ]
+        },
+
+        champion_intro_whip: {
+            id: 'champion_intro_whip',
+            ...LOCATIONS.office,
+            dialogue: [
+                {
+                    speaker: 'Okafor',
+                    text: 'Good. I\'ll work the cloakroom. Off the record so you hear it from me first: the one genuinely undecided vote is Boyd. I pulled his file — armed services his whole career, China hawk, voted against every fast-track he ever saw. Make of that what you will. I\'ll send you the rest as I get it.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'I have to run. Get some more coffee in you and get to work. We don\'t lose a third one of these.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'She hangs up before you can answer.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'Three years and she still picks up her own phone for us. Don\'t waste it.',
+                    portrait: null
+                }
+            ],
+            nextScene: 'the_filibuster'
+        },
+
+        champion_intro_clean: {
+            id: 'champion_intro_clean',
+            ...LOCATIONS.office,
+            dialogue: [
+                {
+                    speaker: 'Okafor',
+                    text: 'Fair. I\'ll keep my powder dry for the floor and trust you to bring me the count. Just know I can only defend what you can prove. Get me the case and I\'ll get up and make it.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'I have to run. Drink your coffee. We don\'t lose a third one of these.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'She hangs up before you can answer.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'Three years and she still picks up her own phone for us. Don\'t waste it.',
                     portrait: null
                 }
             ],
@@ -2518,6 +2648,23 @@ const STORY = {
                     portrait: null
                 },
                 {
+                    speaker: 'Narrator',
+                    text: 'The coffee maker gurgles its last and dies. Sarah resurrects it without looking up. Somewhere on the Hill an empty pot has ended more careers than scandal ever did.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'A text lands at 12:09. "Whatever you\'ve got, send it tonight. I read it into the record at nine sharp. Get an hour of sleep. — G.O."',
+                    portrait: null,
+                    conditionalOnly: 'championWhipping'
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'A text lands at 12:09. "Send me the case before you sleep. I can only argue what you can prove. — G.O."',
+                    portrait: null,
+                    conditionalOnly: '!championWhipping'
+                },
+                {
                     speaker: 'Sarah',
                     text: 'Whatever happens tomorrow, we did the work.',
                     portrait: null
@@ -2759,6 +2906,16 @@ const STORY = {
                 {
                     speaker: 'Narrator',
                     text: 'Reese. Innovation-first, China-race absolutist. A hard yes on Amendment 7, and no argument you have will move him. He says it like it\'s obvious, because to him it is.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'Mr. Chairman, as sponsor I\'ll oppose. "Voluntary best practices" is the phrase you reach for when you\'ve decided the public doesn\'t get to check your work. Everything in the gallery today is the case for why they should.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Okafor. She picks up the line you built this week and reads it into the record like it was always hers. That\'s the deal: you do the homework, she has the standing to say it where it counts.',
                     portrait: null
                 },
                 {
@@ -3299,6 +3456,12 @@ const STORY = {
                     conditionalOnly: '!coalitionAligned'
                 },
                 {
+                    speaker: 'Okafor',
+                    text: 'She catches your eye across the room and taps two fingers on her folder. The count you brought her. Now it gets tested.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
                     speaker: 'Narrator',
                     text: 'When Boyd\'s name is called, he votes no on Amendment 7. Reese shoots him a look down the dais; Boyd ignores it. Peters\'s comfortable margin just got narrower than his whip count promised.',
                     portrait: null,
@@ -3807,8 +3970,13 @@ const STORY = {
                     portrait: null
                 },
                 {
+                    speaker: 'Okafor',
+                    text: 'Okafor calls once, briefly. "We didn\'t have the votes and I didn\'t have the case to get them. I\'ll put it in the hopper again next session. Bring me more next time." Then she\'s gone, on to the next markup.',
+                    portrait: null
+                },
+                {
                     speaker: 'Sarah',
-                    text: 'Coalition call in ten.',
+                    text: 'Coalition call in ten. I\'ll make more coffee.',
                     portrait: null
                 },
                 {
@@ -4228,6 +4396,11 @@ const STORY = {
                     portrait: null
                 },
                 {
+                    speaker: 'Okafor',
+                    text: 'Okafor sponsored it, fought for it on the floor, and put her name on the win. On the night it cleared committee she sent you one line: "We did this. Now go sleep. That\'s an order from a sitting member of Congress."',
+                    portrait: null
+                },
+                {
                     speaker: 'Sarah',
                     text: 'She drops the first compliance report on your desk.',
                     portrait: null,
@@ -4300,6 +4473,11 @@ const STORY = {
                 {
                     speaker: 'Narrator',
                     text: 'Same teeth either way: mandatory testing, quarterly public reports, independent verification. The argument just had to fit more than one set of priorities.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Okafor',
+                    text: 'She caught you in the hallway after the floor vote. "You handed me a count I could actually defend. I just had to stand up and read it. Don\'t ever let anyone tell you the inside doesn\'t need the outside."',
                     portrait: null
                 },
                 {

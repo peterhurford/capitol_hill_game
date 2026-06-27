@@ -593,6 +593,21 @@ body {
     background: linear-gradient(90deg, rgba(208, 80, 80, 0.06) 0%, transparent 100%);
 }
 
+/* Okafor - indigo/violet, your internal champion: the bill's lead sponsor on the committee */
+.speaker-okafor #character-name {
+    color: #9a86f0;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.speaker-okafor #dialogue-text {
+    color: #ebe6fc;
+    border-left: 3px solid #9a86f0;
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+    background: linear-gradient(90deg, rgba(154, 134, 240, 0.06) 0%, transparent 100%);
+}
+
 /* Minor characters (meeting voices, reps) - muted, background noise */
 .speaker-minor #character-name {
     color: #808070;
