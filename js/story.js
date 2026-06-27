@@ -1638,8 +1638,7 @@ const STORY = {
             dialogue: [
                 {
                     speaker: 'Narrator',
-                    text: 'Jordan\'s question is actually good. There\'s a timeline discrepancy in the stakeholder memo—the compliance deadline doesn\'t match the implementation schedule.',
-                    conditionalText: { foundEvidence: 'Jordan\'s question is actually good. They\'ve spotted the same timeline discrepancy you flagged at the stakeholder meeting—the compliance deadline doesn\'t match the implementation schedule. Independent confirmation. The intern has a good eye.' },
+                    text: 'Jordan\'s question is actually good. The memo summarizes public comment as "broadly supportive of phased implementation." But Jordan pulled the raw comment log—it\'s nearly an even split. The summary is quietly sanding the opposition out of the record.',
                     portrait: null
                 },
                 {
@@ -2349,13 +2348,13 @@ const STORY = {
                 },
                 {
                     speaker: 'Sarah',
-                    text: 'Oh—Jordan caught a discrepancy in the stakeholder memo. The compliance deadline doesn\'t match the implementation schedule. Good eye.',
+                    text: 'Oh—Jordan caught something in the stakeholder memo. The summary calls public comment "broadly supportive," but the raw log\'s an even split. They\'re laundering the opposition out. Good eye.',
                     portrait: null,
                     conditionalOnly: 'repliedIntern'
                 },
                 {
                     speaker: 'You',
-                    text: 'That\'s the same discrepancy I flagged at the roundtable. The timeline gaps aren\'t mistakes—they\'re deliberate. Industry wants the delay.',
+                    text: 'The timeline gap I flagged at the roundtable goes in the testimony too. Compliance trailing implementation by six months isn\'t sloppiness—it\'s two years of deploying with nobody checking.',
                     portrait: null,
                     conditionalOnly: 'foundEvidence'
                 },
