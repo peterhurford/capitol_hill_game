@@ -71,13 +71,13 @@ function getAmendment7Result(flags) {
     if (flags.preparedTestimony && flags.focusedAmendment7) swings++;  // testimony + focus = compelling
     if (flags.calledCommitteeMembers && flags.seizedMoment) swings++;  // phones work with pressure
     // Bipartisan swing: flipping Rep. Boyd (the deduction puzzle) flips a sixth vote
-    if (flags.boydFlipped) swings++;  // the conservative crossover vote
+    if (flags.boydFlipped) swings++;  // Boyd voting his own national-security priorities
     // Note: confrontedMindScale affects narrative but doesn't directly swing votes
 
     // 25-member committee. Industry starts with 17 yes votes.
     // Each swing flips one yes voter to no.
-    // At 5 swings (miracle): 12-13, amendment fails outright by one.
-    // At 6 swings (realignment): 11-14, a decisive bipartisan defeat — requires flipping Boyd.
+    // At 5 swings: 12-13, amendment fails by one (the Breakthrough).
+    // At 6 swings: 11-14, a wider defeat — reached when Boyd is also in the count.
     const yesVotes = 17 - swings;
     const noVotes = 8 + swings;
     const margin = yesVotes - noVotes;
@@ -137,36 +137,52 @@ const ROUTING_RULES = {
     boyd_security: {
         rules: [
             {
-                // The national-security frame is the right read on Boyd — but only lands if
-                // you've done the homework to back it up (his hawk record). Otherwise he
-                // likes the pitch but won't commit.
-                condition: (flags) => flags.clueBoydHawk,
+                // The national-security frame is the right read on Boyd — but it only lands if
+                // you've assembled the whole picture from two separate homework sources: his
+                // hawk record (committee calls / the champion's whip count) AND his donor
+                // (Priya's file, which tells you the monopoly frame would have backfired).
+                // One source isn't enough — he likes the pitch but won't commit on a hunch.
+                condition: (flags) => flags.clueBoydHawk && flags.clueBoydDonor,
                 target: 'boyd_flipped'
             }
         ],
         default: 'boyd_noncommittal'
     },
+    // The unified-frame gambit: leveling with the coalition ("Amendment 4 is already dead,
+    // unite behind 7") only holds if you have the receipts to back the hard truth. Without
+    // them it reads as a bluff and the coalition fractures — worse than committing to one side.
+    coalition_unify_check: {
+        rules: [
+            {
+                condition: (flags) => flags.foundEvidence,
+                target: 'coalition_frame_unified'
+            }
+        ],
+        default: 'coalition_frame_fractured'
+    },
     miracle_check: {
         rules: [
             {
-                // Realignment supersedes the miracle: if the amendment fails AND you flipped
-                // Boyd (a Republican crossover), it's a decisive bipartisan defeat — the hardest
-                // outcome in the game, gated behind the whip-count deduction puzzle.
+                // Common Ground is the Breakthrough's full count PLUS Boyd — a strict superset,
+                // not a shortcut around the coalition. It requires everything the Breakthrough
+                // does (the inside track via Priya and the whole coalition aligned) AND Boyd in
+                // the count from the whip-count deduction. Cracking Boyd alone, without the
+                // coalition, does not get you here — it gets you the Breakthrough.
                 condition: (flags) => {
                     const { passed } = getAmendment7Result(flags);
-                    return !passed && flags.boydFlipped;
+                    return !passed && flags.boydFlipped && flags.sharedWithPriya &&
+                        flags.alignedCivilRights && flags.alignedDisability && flags.alignedWatchdog;
                 },
                 target: 'climax_realignment'
             },
             {
-                // Miracle requires PERFECT play:
-                // - Elena trusted and not burned (insider intel)
-                // - Priya visited (Rep. Chen's vote)
-                // - All 3 coalition partners aligned (unified front — requires toldAmaraTruth → trustedElena chain)
-                // - Amendment actually fails (5 swings, margin -1)
+                // The Breakthrough: Amendment 7 is defeated by any other route. Reaching 5 swings
+                // at all takes real coalition work (the partners are most of the swing math), so
+                // this still rewards a full-court press — and it makes sure any defeat lands on a
+                // "you won" scene rather than the pass-written climax.
                 condition: (flags) => {
                     const { passed } = getAmendment7Result(flags);
-                    return !passed && flags.trustedElena && !flags.elenaBurned && flags.sharedWithPriya && flags.alignedCivilRights && flags.alignedDisability && flags.alignedWatchdog;
+                    return !passed;
                 },
                 target: 'climax_miracle'
             }
@@ -174,35 +190,39 @@ const ROUTING_RULES = {
         default: 'climax'
     },
     climax_choice_check: {
+        // The two axes are now earned independently of the Elena trust choice:
+        //   inside track  = sharedWithPriya (Rep. Chen's vote + reading the players)
+        //   a real movement = coalitionAligned (you built and held a coalition)
+        //   leverage = seizedMoment (public pressure that makes a deal possible)
         rules: [
             {
-                // Both allies + seized moment = full negotiation option
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned && flags.sharedWithPriya && flags.seizedMoment,
+                // Inside track + a movement + public pressure = a real deal on the table
+                condition: (flags) => flags.sharedWithPriya && flags.coalitionAligned && flags.seizedMoment,
                 target: 'climax_both'
             },
             {
-                // Both allies but no public pressure = deal falls through
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned && flags.sharedWithPriya,
+                // Inside track + a movement but no public pressure = no deal to be made
+                condition: (flags) => flags.sharedWithPriya && flags.coalitionAligned,
                 target: 'climax_both_no_leverage'
             },
             {
-                // Elena only (not burned) = you understand but can't act
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned,
-                target: 'climax_elena_only'
+                // A movement but no inside track = you raised the alarm, couldn't move the votes
+                condition: (flags) => flags.coalitionAligned,
+                target: 'climax_coalition_only'
             },
             {
-                // Priya only = you can act but don't understand
+                // Inside track but no movement = one vote, no pressure behind it
                 condition: (flags) => flags.sharedWithPriya,
                 target: 'climax_priya_only'
             }
         ],
-        // Neither (or Elena burned) = you're irrelevant
+        // Neither = you were never in the conversation
         default: 'climax_neither'
     },
     ending_check: {
         rules: [
             {
-                // Realignment = bipartisan defeat of Amendment 7 (flipped Boyd). The pinnacle.
+                // Common Ground = Amendment 7 defeated with Boyd in the count (the full setup).
                 condition: (flags) => flags.bipartisanWin,
                 target: 'ending_realignment'
             },
@@ -212,32 +232,32 @@ const ROUTING_RULES = {
                 target: 'ending_miracle'
             },
             {
-                // Both allies + negotiated = Incremental victory
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned && flags.sharedWithPriya && flags.negotiated,
+                // Inside track + a movement + negotiated = Incremental victory
+                condition: (flags) => flags.sharedWithPriya && flags.coalitionAligned && flags.negotiated,
                 target: 'ending_incremental'
             },
             {
-                // Both allies + walked away = principled stand
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned && flags.sharedWithPriya && flags.walkedAway,
+                // Inside track + a movement + walked away = principled stand
+                condition: (flags) => flags.sharedWithPriya && flags.coalitionAligned && flags.walkedAway,
                 target: 'ending_walked_away'
             },
             {
-                // Both allies but no leverage (no seizedMoment, never got the deal) = The Almost
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned && flags.sharedWithPriya,
+                // Inside track + a movement but no leverage (no deal) = The Almost
+                condition: (flags) => flags.sharedWithPriya && flags.coalitionAligned,
                 target: 'ending_no_leverage'
             },
             {
-                // Elena only (not burned) = Cassandra (you saw it coming)
-                condition: (flags) => flags.trustedElena && !flags.elenaBurned,
+                // A movement but no inside track = Cassandra (right, but couldn't move the votes)
+                condition: (flags) => flags.coalitionAligned,
                 target: 'ending_cassandra'
             },
             {
-                // Priya only = Pyrrhic (won battle, lost war)
+                // Inside track but no movement = Pyrrhic (won a vote, lost the war)
                 condition: (flags) => flags.sharedWithPriya,
                 target: 'ending_pyrrhic'
             }
         ],
-        // No allies (or Elena burned without Priya) = Status Quo
+        // Nothing held together = Status Quo
         default: 'ending_status_quo'
     }
 };
@@ -635,16 +655,26 @@ const STORY = {
                     speaker: 'You',
                     text: 'That\'s... painfully accurate.',
                     portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Here\'s what you actually have to go on. She picked this bar—quiet, no one from the Hill. She steered to Amendment 7 before you brought up a single amendment. And the vulnerability is real, but it\'s also exactly the kind of thing that opens a person up.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'A lobbyist volunteering which amendment matters most is either a defector handing you the map—or a plant making sure you spend your week digging in the spot she chose. You won\'t know which until it\'s too late to matter. You just have to read her.',
+                    portrait: null
                 }
             ],
             choices: [
                 {
-                    text: 'You\'re right. We need people on the inside.',
+                    text: 'Trust her. A defector on the inside is worth the risk.',
                     setFlags: { trustedElena: true },
                     nextDialogue: 'elena_trusted'
                 },
                 {
-                    text: 'What\'s MindScale getting out of this conversation?',
+                    text: 'Keep your guard up. Take the lead, not the loyalty—and watch where she steers you.',
                     setFlags: { trustedElena: false },
                     nextDialogue: 'elena_suspicious'
                 }
@@ -1097,7 +1127,18 @@ const STORY = {
                 }
             ],
             setFlags: { metMarcus: true },
-            nextScene: 'coalition_call_intro'
+            choices: [
+                {
+                    text: 'Pocket the card. Keep moving.',
+                    nextScene: 'coalition_call_intro'
+                },
+                {
+                    text: 'A man this smooth, that eager to wave you off one specific vote? Before you trust a word of it, find out who actually signs his checks.',
+                    setFlags: { clueMarcusTie: true },
+                    nextScene: 'coalition_call_intro',
+                    conditionalOnly: '!clueMarcusTie'
+                }
+            ]
         },
 
         // Coalition texture: three named partners to negotiate with
@@ -1184,6 +1225,11 @@ const STORY = {
                     speaker: 'Sarah',
                     text: 'Whatever you choose, it\'s the frame for everything—the rebuttal, the hearing, the vote. This isn\'t just coalition branding. It\'s how we fight.',
                     portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'You could try to hold them both together—level with them, tell them 4 is gone and 7 is the whole game now. But if you say that and can\'t prove it, you\'ve just told two veteran organizers you\'re guessing, and they\'ll both walk. You\'d need something solid to put in front of them.',
+                    portrait: null
                 }
             ],
             choices: [
@@ -1198,10 +1244,8 @@ const STORY = {
                     nextDialogue: 'coalition_frame_data'
                 },
                 {
-                    text: 'I need to tell you all something. Amendment 4—the bias audit requirement—is already dead in committee. Amendment 7 is all that\'s left.',
-                    setFlags: { toldAmaraTruth: true, alignedCivilRights: true, alignedWatchdog: true },
-                    nextDialogue: 'coalition_frame_unified',
-                    conditionalOnly: 'trustedElena'
+                    text: 'Neither leads. I tell them the truth: Amendment 4 is already dead in committee, so 7 is the only vehicle left—and I put the receipts on the table to prove it.',
+                    nextDialogue: 'coalition_unify_router'
                 }
             ]
         },
@@ -1286,13 +1330,61 @@ const STORY = {
             nextScene: 'coalition_negotiate_kai'
         },
 
-        coalition_frame_unified: {
-            id: 'coalition_frame_unified',
+        // Router: the unify gambit only holds if you brought receipts (foundEvidence)
+        coalition_unify_router: {
+            id: 'coalition_unify_router',
+            isRouter: true,
+            routerId: 'coalition_unify_check'
+        },
+
+        // FAILURE: you played the truth card with nothing to back it. Both walk.
+        coalition_frame_fractured: {
+            id: 'coalition_frame_fractured',
             ...LOCATIONS.officeCoalition,
             dialogue: [
                 {
+                    speaker: 'You',
+                    text: 'Amendment 4 is already dead in committee. I\'ve heard it from people who\'d know. Seven is the only vehicle left—so we go in together, one frame.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Diane',
+                    text: 'Heard it from who? Because I make my living on what I can document, and "people who\'d know" isn\'t a source.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Amara',
+                    text: 'You\'re asking me to fold the civil rights frame into a strategy built on a rumor. If 4 isn\'t actually dead, we just gave it up for nothing.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'She mutes the call.',
+                    portrait: null,
+                    isAction: true
+                },
+                {
+                    speaker: 'Sarah',
+                    text: 'They don\'t believe you. And now neither of them trusts the other not to cut a side deal. You reached for both and came away with neither—we\'ll have to rebuild this around whoever still picks up the phone.',
+                    portrait: null
+                }
+            ],
+            nextScene: 'coalition_negotiate_kai'
+        },
+
+        coalition_frame_unified: {
+            id: 'coalition_frame_unified',
+            ...LOCATIONS.officeCoalition,
+            setFlags: { toldAmaraTruth: true, alignedCivilRights: true, alignedWatchdog: true },
+            dialogue: [
+                {
+                    speaker: 'You',
+                    text: 'Amendment 4 is already dead in committee. Here\'s the paper trail—the timeline, the markup notes. Seven is the only vehicle left for any of it, so we go in together.',
+                    portrait: null
+                },
+                {
                     speaker: 'Narrator',
-                    text: 'Silence on the call.',
+                    text: 'You slide the evidence across—the discrepancy you dug up, in black and white. Silence on the call while they read.',
                     portrait: null
                 },
                 {
@@ -1547,6 +1639,7 @@ const STORY = {
                 {
                     speaker: 'Narrator',
                     text: 'Jordan\'s question is actually good. There\'s a timeline discrepancy in the stakeholder memo—the compliance deadline doesn\'t match the implementation schedule.',
+                    conditionalText: { foundEvidence: 'Jordan\'s question is actually good. They\'ve spotted the same timeline discrepancy you flagged at the stakeholder meeting—the compliance deadline doesn\'t match the implementation schedule. Independent confirmation. The intern has a good eye.' },
                     portrait: null
                 },
                 {
@@ -1925,7 +2018,8 @@ const STORY = {
                 },
                 {
                     speaker: 'Priya',
-                    text: 'But Elena vouched for you. And Elena doesn\'t vouch for people.',
+                    text: 'But you came in here asking the right question instead of the flattering one. That buys you the first favor.',
+                    conditionalText: { trustedElena: 'But Elena vouched for you. And Elena doesn\'t vouch for people.' },
                     portrait: 'portrait-priya'
                 },
                 {
@@ -1941,12 +2035,17 @@ const STORY = {
                 },
                 {
                     speaker: 'Priya',
-                    text: 'Two things matter. One: his biggest check this cycle came from Prometheus. Half a million, through a leadership PAC. He is not going to vote to kneecap his own donor, and if you walk in waving an "anti-Big-Tech-monopoly" banner, he will assume you\'re running a play for one of MindScale\'s rivals and he will shut the door.',
+                    text: 'Start with the money. His biggest check this cycle came from Prometheus—half a million, through a leadership PAC. He is not going to vote to kneecap his own donor, and if you walk in waving an "anti-Big-Tech-monopoly" banner, he\'ll assume you\'re running a play for one of MindScale\'s rivals and shut the door in your face.',
                     portrait: 'portrait-priya'
                 },
                 {
+                    speaker: 'You',
+                    text: 'So what does move him?',
+                    portrait: null
+                },
+                {
                     speaker: 'Priya',
-                    text: 'Two: the man is a China hawk down to his socks. Voted for every export control, every chip ban. Calls frontier AI "the new Sputnik" in every town hall. If anyone flips Boyd, it\'s on national security. Not civil rights, not monopolies. Security.',
+                    text: 'That\'s the part you have to earn. I can tell you where his money comes from. What actually gets him out of his chair—you\'ll find that by doing the legwork everyone else skips. Read the rest of the file. Make the calls. It\'s in there if you look.',
                     portrait: 'portrait-priya'
                 },
                 {
@@ -1956,11 +2055,11 @@ const STORY = {
                 },
                 {
                     speaker: 'Priya',
-                    text: 'Of course he did.',
+                    text: 'Of course he did. Ask yourself who signs his checks before you take that one to heart.',
                     portrait: 'portrait-priya'
                 }
             ],
-            setFlags: { knowsTheTruth: true, clueBoydDonor: true, clueBoydHawk: true },
+            setFlags: { knowsTheTruth: true, clueBoydDonor: true },
             nextScene: 'aftermath_priya'
         },
 
@@ -2751,9 +2850,15 @@ const STORY = {
                     speaker: 'Narrator',
                     text: 'Sarah doesn\'t say anything. She doesn\'t have to.',
                     portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'And the things Elena handed you go cold with her. That tip about Marcus—who he really works for—you can\'t stand behind it anymore. The only person who\'d have confirmed it just stopped taking your calls.',
+                    portrait: null,
+                    conditionalOnly: 'clueMarcusTie'
                 }
             ],
-            setFlags: { elenaBurned: true },
+            setFlags: { elenaBurned: true, clueMarcusTie: false },
             nextScene: 'markup_hearing_open'
         },
 
@@ -3200,19 +3305,13 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Priya said: he\'s a China hawk to the bone—national security is the only lever that moves him.',
-                    portrait: null,
-                    conditionalOnly: 'sharedWithPriya'
-                },
-                {
-                    speaker: 'Narrator',
                     text: 'Marcus said: don\'t bother—Boyd\'s a brick wall, spend your time elsewhere.',
                     portrait: null,
                     conditionalOnly: 'metMarcus'
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'And then the things you dug up yourself.',
+                    text: 'None of them agree, and none of them are disinterested. What you actually have to go on is the things you dug up yourself.',
                     portrait: null
                 },
                 {
@@ -3517,24 +3616,24 @@ const STORY = {
             routerId: 'miracle_check'
         },
 
-        // Realignment climax — Amendment 7 defeated with a bipartisan crossover (Boyd flipped)
+        // Common Ground climax — Amendment 7 defeated with Boyd's vote in the count
         climax_realignment: {
             id: 'climax_realignment',
             ...LOCATIONS.capitol,
             dialogue: [
                 {
                     speaker: 'Narrator',
-                    text: 'The chair calls it and the amendment fails—not by a vote, by four. Peters had it whipped as a formality. Boyd voting his own priorities was all it took to make the count wrong.',
+                    text: 'The chair calls it and the amendment fails. Peters had it whipped as a formality; Boyd voting his own priorities was all it took to make the count wrong.',
                     portrait: null
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Peters is already whispering to staff. Boyd gathers his folder, unbothered, like a man who did the thing his record said he\'d do and doesn\'t see what the fuss is about.',
+                    text: 'Peters is already whispering to staff. Boyd gathers his folder and goes, unbothered, like a man who did the thing his record said he\'d do.',
                     portrait: null
                 },
                 {
                     speaker: 'Sarah',
-                    text: '"He didn\'t do anyone a favor. He read the bill as a national security problem and voted it that way—which is the point. Letting two labs grade their own homework was never actually a left or right question. It just kept getting whipped like one."',
+                    text: '"You found the thing he actually cared about and put it in front of him. That\'s the whole job. You just don\'t usually get to watch it land."',
                     portrait: null
                 },
                 {
@@ -3689,39 +3788,39 @@ const STORY = {
             nextScene: 'ending_check'
         },
 
-        // ELENA ONLY: You understand but can't act
-        climax_elena_only: {
-            id: 'climax_elena_only',
+        // COALITION ONLY: You built a movement but had no inside track to convert it
+        climax_coalition_only: {
+            id: 'climax_coalition_only',
             ...LOCATIONS.mall,
             dialogue: [
                 {
                     speaker: 'Narrator',
-                    text: 'Your phone buzzes. Elena.',
-                    portrait: null
-                },
-                {
-                    speaker: 'Elena',
-                    text: '"You saw it coming, right? Amendments 3-6 were always sacrificial. They got exactly what they wanted."',
-                    portrait: null
-                },
-                {
-                    speaker: 'You',
-                    text: 'I saw it. I just couldn\'t stop it.',
-                    portrait: null
-                },
-                {
-                    speaker: 'Elena',
-                    text: '"That\'s the game. Understanding it doesn\'t mean you can change it."',
-                    portrait: null
-                },
-                {
-                    speaker: 'Elena',
-                    text: '"Not without people on the inside. Votes. Leverage."',
+                    text: 'Amendment 7 passes. Your coalition put on a real show—twelve organizations, a wall of testimony, press in the room.',
                     portrait: null
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'She\'s right. You knew where to aim. You just didn\'t have anyone to pull the trigger.',
+                    text: 'Your phone buzzes. Amara.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Amara',
+                    text: '"We did everything right out here. Everyone heard us. It still didn\'t touch the count."',
+                    portrait: null
+                },
+                {
+                    speaker: 'You',
+                    text: 'We had the movement. We didn\'t have a single vote we could actually move.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Amara',
+                    text: '"Noise on the outside isn\'t the same as someone on the inside who owes you a phone call. We never had that."',
+                    portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'She\'s right. You built the pressure. You just had no one on the committee to aim it at.',
                     portrait: null
                 }
             ],
@@ -3755,47 +3854,46 @@ const STORY = {
                 },
                 {
                     speaker: 'Priya',
-                    text: '"One vote is a start. But we needed intel. We needed to know where they were going to hit us. We were fighting blind."',
+                    text: '"One vote is a start. But one vote with nothing behind it is just a footnote. No coalition, no pressure, no reason for anyone else to move. We were a delegation of two."',
                     portrait: null
                 }
             ],
             nextScene: 'ending_check'
         },
 
-        // BOTH: Full picture + leverage = real choice
+        // BOTH: Inside track + a movement + leverage = a real choice
         climax_both: {
             id: 'climax_both',
             ...LOCATIONS.mall,
             dialogue: [
                 {
                     speaker: 'Narrator',
-                    text: 'Your phone buzzes. Elena, then Priya.',
-                    portrait: null
-                },
-                {
-                    speaker: 'Elena',
-                    text: '"You\'ve got Representative Chen\'s vote. And I know what they\'ll accept. There\'s a deal here if you want it."',
+                    text: 'Your phone buzzes. Priya, then Sarah.',
                     portrait: null
                 },
                 {
                     speaker: 'Priya',
-                    text: '"Elena says there\'s a deal. Let industry reintroduce Amendments 3-6 in exchange for real concessions on 7. Is that real?"',
+                    text: '"You\'ve got Representative Chen\'s vote, and after the week your coalition just put them through, industry is nervous. That combination is a deal, if you want one."',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"It\'s real. They get Amendments 3-6 back—their \'flexible frameworks\'—but we get actual reporting requirements in 7. Quarterly instead of annual. Public instead of confidential."',
-                    conditionalText: { coalitionAligned: '"It\'s real. They get Amendments 3-6 back—their \'flexible frameworks\'—but we get actual reporting requirements in 7. Quarterly instead of annual. Public instead of confidential. And your coalition made enough noise that they\'ll accept independent verification."' },
+                    speaker: 'Sarah',
+                    text: '"A deal meaning what—let them reintroduce Amendments 3-6 in exchange for real concessions on 7?"',
                     portrait: null
                 },
                 {
                     speaker: 'Priya',
+                    text: '"That\'s the shape of it. They get their \'flexible frameworks\' back—but 7 gets actual reporting requirements. Quarterly instead of annual. Public instead of confidential. And with your coalition watching, independent verification."',
+                    portrait: null
+                },
+                {
+                    speaker: 'Sarah',
                     text: '"That\'s not nothing."',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"It\'s not much either. But it\'s something they\'ll actually have to do."',
+                    speaker: 'Priya',
+                    text: '"It\'s not much either. But it\'s something they\'ll actually have to do. The vote alone wouldn\'t have gotten you in the room. The noise is what did it."',
                     portrait: null
                 }
             ],
@@ -3813,44 +3911,39 @@ const STORY = {
             ]
         },
 
-        // BOTH BUT NO LEVERAGE: Had allies but no public pressure
+        // BOTH BUT NO LEVERAGE: Inside track + a movement, but no public pressure
         climax_both_no_leverage: {
             id: 'climax_both_no_leverage',
             ...LOCATIONS.mall,
             dialogue: [
                 {
                     speaker: 'Narrator',
-                    text: 'Your phone buzzes. Elena, then Priya.',
-                    portrait: null
-                },
-                {
-                    speaker: 'Elena',
-                    text: '"You\'ve got Representative Chen. And I know what they\'d accept. There\'s a deal here—in theory."',
+                    text: 'Your phone buzzes. Priya.',
                     portrait: null
                 },
                 {
                     speaker: 'Priya',
-                    text: '"In theory?"',
+                    text: '"You\'ve got Chen. You\'ve got a coalition. On paper there\'s a deal here—in theory."',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"Nobody\'s watching. No public pressure. Why would they give anything up? They\'re winning."',
+                    speaker: 'You',
+                    text: 'In theory?',
                     portrait: null
                 },
                 {
                     speaker: 'Priya',
-                    text: '"She\'s right. Without anyone paying attention, there\'s no deal to make."',
+                    text: '"Nobody\'s watching. No headline, no moment, no cost to them for holding the line. Why would they give anything up? They\'re winning quietly."',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"You had the pieces. You just needed the moment."',
+                    speaker: 'Priya',
+                    text: '"You had the pieces. You just never forced the moment that makes politicians flinch."',
                     portrait: null
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'She\'s right. You understood the game. You had the votes. But nobody was watching, and that\'s the only thing that makes politicians move.',
+                    text: 'She\'s right. You had the inside track and the coalition. But nobody was paying attention, and attention is the only thing that moves them.',
                     portrait: null
                 }
             ],
@@ -3867,14 +3960,13 @@ const STORY = {
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"I\'ll make some calls."',
+                    speaker: 'Priya',
+                    text: '"I\'ll make the calls. Chen carries it inside, your people carry it outside."',
                     portrait: null
                 },
                 {
                     speaker: 'Priya',
-                    text: '"Quarterly public reports. That\'s more than we\'ve ever gotten."',
-                    conditionalText: { coalitionAligned: '"Quarterly public reports with independent verification. That\'s more than we\'ve ever gotten."' },
+                    text: '"Quarterly public reports with independent verification. That\'s more than this town has ever gotten out of them."',
                     portrait: null
                 },
                 {
@@ -3901,18 +3993,18 @@ const STORY = {
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
+                    speaker: 'Priya',
                     text: '"Your call. The bill passes anyway, with or without the deal."',
                     portrait: null
                 },
                 {
-                    speaker: 'Priya',
+                    speaker: 'Sarah',
                     text: '"At least we didn\'t help them."',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"No. You just didn\'t help anyone."',
+                    speaker: 'Priya',
+                    text: '"Maybe. Or you just left the only leverage you\'ll get this session on the table. You\'ll get to decide which story it was."',
                     portrait: null
                 }
             ],
@@ -4006,12 +4098,12 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: '"Mandatory testing" became "encouraged to consider." Just like Elena said it would.',
+                    text: '"Mandatory testing" became "encouraged to consider." Exactly what your coalition spent the week warning anyone who\'d listen.',
                     portrait: null
                 },
                 {
                     speaker: 'Sarah',
-                    text: 'You called it. Every amendment, every vote.',
+                    text: 'Twelve organizations on the record. The press in the room. We called it, loud, the whole way.',
                     portrait: null
                 },
                 {
@@ -4021,27 +4113,27 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Your phone buzzes. Elena.',
+                    text: 'Your phone buzzes. Amara.',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"For what it\'s worth, you were right about all of it. Amendments 3-6 were always sacrificial."',
+                    speaker: 'Amara',
+                    text: '"For what it\'s worth, we were right about all of it. Everyone who mattered heard us say so."',
                     portrait: null
                 },
                 {
                     speaker: 'You',
-                    text: 'And Amendment 7 was always the real fight.',
+                    text: 'Being right and being heard still wasn\'t a vote.',
                     portrait: null
                 },
                 {
-                    speaker: 'Elena',
-                    text: '"Next time, find someone who can actually move votes. Understanding the game is only half of it."',
+                    speaker: 'Amara',
+                    text: '"Next time we need someone on the inside before the markup, not a megaphone after. A movement that can\'t reach the count is just a louder way to lose."',
                     portrait: null
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'She\'s right. You saw the trap. You just couldn\'t do anything about it.',
+                    text: 'She\'s right. You built something real outside the room. It just never got inside it.',
                     portrait: null
                 },
                 {
@@ -4459,15 +4551,15 @@ const STORY = {
             endingType: 'The Breakthrough'
         },
 
-        // The hardest ending in the game — requires solving the Boyd whip-count deduction
-        // puzzle, which gates a bipartisan defeat of Amendment 7.
+        // The hardest ending to reach — on top of the full count it requires solving the Boyd
+        // whip-count deduction, so Amendment 7 is defeated with his vote in the tally.
         ending_realignment: {
             id: 'ending_realignment',
             ...LOCATIONS.officeSixMonths,
             dialogue: [
                 {
                     speaker: 'Narrator',
-                    text: 'The Frontier AI Safety Act passes the House. 258 to 177. A chunk of the yes votes come from members who\'d never sign a "tech accountability" bill but will sign a "don\'t let two labs self-certify a strategic risk" one.',
+                    text: 'The Frontier AI Safety Act passes the House. 258 to 177. Some of those yes votes came in on "don\'t let two labs self-certify a strategic risk"—same bill, a frame that fit priorities the original pitch never spoke to.',
                     portrait: null
                 },
                 {
@@ -4488,7 +4580,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Sarah',
-                    text: 'The useful part isn\'t the margin. It\'s that the next person who tries to wave this off as one faction\'s pet project has a Boyd vote to explain. A safety rule that more than one kind of member will defend is a lot harder to gut in the Senate.',
+                    text: 'The useful part isn\'t the margin. It\'s that you found the argument that moved Boyd when the rest of us had written him off. That\'s a thing you can do again. There\'s always a Boyd.',
                     portrait: null
                 },
                 {
@@ -4515,7 +4607,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Elena',
-                    text: '"They\'ll come for it in the Senate. But a bill that pulls votes from across the whole committee is a lot more expensive to kill. You did your homework."',
+                    text: '"They\'ll come for it in the Senate. They always come. But you walked in short of the votes and walked out with one you weren\'t supposed to get—that\'s the part of this town that\'s actually hard. You did your homework."',
                     portrait: null,
                     conditionalOnly: 'trustedElena'
                 },

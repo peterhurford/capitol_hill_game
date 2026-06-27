@@ -202,92 +202,93 @@ const TestRunner = {
             'Trusted neither -> markup_hearing_open'
         );
 
-        // Climax choice routing - five distinct paths
+        // Climax choice routing - axes are coalition strength + Priya inside track + leverage,
+        // decoupled from the Elena trust choice.
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: true, seizedMoment: true }),
+            routeScene('climax_choice_check', { sharedWithPriya: true, coalitionAligned: true, seizedMoment: true }),
             'climax_both',
-            'Both allies + seized moment -> climax_both (full negotiation)'
+            'Inside track + movement + moment -> climax_both (full negotiation)'
         );
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: true, seizedMoment: false }),
+            routeScene('climax_choice_check', { sharedWithPriya: true, coalitionAligned: true, seizedMoment: false }),
             'climax_both_no_leverage',
-            'Both allies but no moment -> climax_both_no_leverage'
+            'Inside track + movement but no moment -> climax_both_no_leverage'
         );
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: false }),
-            'climax_elena_only',
-            'Elena only -> climax_elena_only (understand but cant act)'
+            routeScene('climax_choice_check', { sharedWithPriya: false, coalitionAligned: true }),
+            'climax_coalition_only',
+            'Coalition only -> climax_coalition_only (movement but no inside track)'
         );
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: false, sharedWithPriya: true }),
+            routeScene('climax_choice_check', { sharedWithPriya: true, coalitionAligned: false }),
             'climax_priya_only',
-            'Priya only -> climax_priya_only (can act but dont understand)'
+            'Priya only -> climax_priya_only (inside track but no movement)'
         );
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: false, sharedWithPriya: false }),
+            routeScene('climax_choice_check', { sharedWithPriya: false, coalitionAligned: false }),
             'climax_neither',
-            'No allies -> climax_neither (irrelevant)'
+            'Neither -> climax_neither (irrelevant)'
         );
 
-        // Elena burned negates her benefit in climax
+        // DECOUPLE REGRESSION: the Elena trust choice must NOT change climax routing
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: true, elenaBurned: true, sharedWithPriya: true }),
-            'climax_priya_only',
-            'Elena burned + Priya -> climax_priya_only (Elena negated)'
+            routeScene('climax_choice_check', { trustedElena: false, sharedWithPriya: true, coalitionAligned: true, seizedMoment: true }),
+            'climax_both',
+            'climax routing ignores trustedElena (full deal reachable without Elena)'
         );
         this.assertEqual(
-            routeScene('climax_choice_check', { trustedElena: true, elenaBurned: true, sharedWithPriya: false }),
-            'climax_neither',
-            'Elena burned + no Priya -> climax_neither (Elena negated)'
+            routeScene('climax_choice_check', { trustedElena: true, elenaBurned: true, sharedWithPriya: true, coalitionAligned: true, seizedMoment: true }),
+            'climax_both',
+            'climax routing ignores elenaBurned (burning Elena no longer nukes the climax)'
         );
 
-        // Ending routing - seven distinct endings (miracle first)
+        // Ending routing - seven distinct endings (miracle first), keyed on coalition + Priya
         this.assertEqual(
             routeScene('ending_check', { miracleVictory: true }),
             'ending_miracle',
             'Miracle victory -> ending_miracle'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: true, negotiated: true }),
+            routeScene('ending_check', { sharedWithPriya: true, coalitionAligned: true, negotiated: true }),
             'ending_incremental',
-            'Both + negotiated -> ending_incremental'
+            'Inside track + movement + negotiated -> ending_incremental'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: true, walkedAway: true }),
+            routeScene('ending_check', { sharedWithPriya: true, coalitionAligned: true, walkedAway: true }),
             'ending_walked_away',
-            'Both + walked away -> ending_walked_away'
+            'Inside track + movement + walked away -> ending_walked_away'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: true }),
+            routeScene('ending_check', { sharedWithPriya: true, coalitionAligned: true }),
             'ending_no_leverage',
-            'Both allies but no leverage -> ending_no_leverage'
+            'Inside track + movement but no leverage -> ending_no_leverage'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: true, elenaBurned: false, sharedWithPriya: false }),
+            routeScene('ending_check', { sharedWithPriya: false, coalitionAligned: true }),
             'ending_cassandra',
-            'Elena only -> ending_cassandra'
+            'Coalition only -> ending_cassandra (right, but couldnt move the votes)'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: false, sharedWithPriya: true }),
+            routeScene('ending_check', { sharedWithPriya: true, coalitionAligned: false }),
             'ending_pyrrhic',
             'Priya only -> ending_pyrrhic'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: false, sharedWithPriya: false }),
+            routeScene('ending_check', { sharedWithPriya: false, coalitionAligned: false }),
             'ending_status_quo',
-            'No allies -> ending_status_quo'
+            'Nothing held together -> ending_status_quo'
         );
 
-        // Elena burned negates her benefit in endings
+        // DECOUPLE REGRESSION: the Elena trust choice must NOT change ending routing
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: true, elenaBurned: true, sharedWithPriya: true, negotiated: true }),
-            'ending_pyrrhic',
-            'Elena burned + Priya + negotiated -> ending_pyrrhic (Elena negated)'
+            routeScene('ending_check', { trustedElena: false, sharedWithPriya: true, coalitionAligned: true, negotiated: true }),
+            'ending_incremental',
+            'ending routing ignores trustedElena (incremental reachable without Elena)'
         );
         this.assertEqual(
-            routeScene('ending_check', { trustedElena: true, elenaBurned: true, sharedWithPriya: false }),
-            'ending_status_quo',
-            'Elena burned + no Priya -> ending_status_quo (Elena negated)'
+            routeScene('ending_check', { trustedElena: true, elenaBurned: true, sharedWithPriya: true, coalitionAligned: true, negotiated: true }),
+            'ending_incremental',
+            'ending routing ignores elenaBurned (incremental survives a burned Elena)'
         );
 
         // Invalid router returns null
@@ -553,26 +554,27 @@ const TestRunner = {
 
         // Each climax path should be distinct
         this.assert(STORY.scenes.climax_neither !== undefined, 'climax_neither exists (no allies)');
-        this.assert(STORY.scenes.climax_elena_only !== undefined, 'climax_elena_only exists (intel only)');
-        this.assert(STORY.scenes.climax_priya_only !== undefined, 'climax_priya_only exists (votes only)');
+        this.assert(STORY.scenes.climax_coalition_only !== undefined, 'climax_coalition_only exists (movement only)');
+        this.assert(STORY.scenes.climax_elena_only === undefined, 'climax_elena_only removed (Elena decoupled from climax)');
+        this.assert(STORY.scenes.climax_priya_only !== undefined, 'climax_priya_only exists (inside track only)');
         this.assert(STORY.scenes.climax_both !== undefined, 'climax_both exists (full negotiation)');
         this.assert(STORY.scenes.climax_both_no_leverage !== undefined, 'climax_both_no_leverage exists (no public pressure)');
         this.assert(STORY.scenes.climax_miracle !== undefined, 'climax_miracle exists (miracle path)');
 
-        // Elena-only path should reflect understanding without power
-        const elenaOnly = STORY.scenes.climax_elena_only;
-        const understandLine = elenaOnly.dialogue.find(d => d.text && d.text.includes('Understanding it'));
+        // Coalition-only path should reflect a movement that couldn't reach the votes
+        const coalitionOnly = STORY.scenes.climax_coalition_only;
+        const pressureLine = coalitionOnly.dialogue.find(d => d.text && d.text.includes('built the pressure'));
         this.assert(
-            understandLine !== undefined,
-            'Elena-only climax reflects knowing but not acting'
+            pressureLine !== undefined,
+            'Coalition-only climax reflects a movement without an inside track'
         );
 
-        // Priya-only path should reflect having an ally but not enough
+        // Priya-only path should reflect an inside vote with no movement behind it
         const priyaOnly = STORY.scenes.climax_priya_only;
-        const fightingBlind = priyaOnly.dialogue.find(d => d.text && d.text.includes('fighting blind'));
+        const noMovement = priyaOnly.dialogue.find(d => d.text && d.text.includes('delegation of two'));
         this.assert(
-            fightingBlind !== undefined,
-            'Priya-only climax shows fighting without intel'
+            noMovement !== undefined,
+            'Priya-only climax shows an inside vote with no movement behind it'
         );
     },
 
@@ -764,52 +766,52 @@ const TestRunner = {
                 expectedType: 'The Breakthrough'
             },
             {
-                name: 'Status Quo (no allies)',
-                flags: { trustedElena: false, sharedWithPriya: false },
+                name: 'Status Quo (nothing held)',
+                flags: { sharedWithPriya: false, coalitionAligned: false },
                 expectedEnding: 'ending_status_quo',
                 expectedType: 'The Status Quo'
             },
             {
-                name: 'Cassandra (Elena only)',
-                flags: { trustedElena: true, sharedWithPriya: false },
+                name: 'Cassandra (coalition only)',
+                flags: { coalitionAligned: true, sharedWithPriya: false },
                 expectedEnding: 'ending_cassandra',
                 expectedType: 'The Cassandra'
             },
             {
-                name: 'Pyrrhic (Priya only)',
-                flags: { trustedElena: false, sharedWithPriya: true },
+                name: 'Pyrrhic (inside track only)',
+                flags: { sharedWithPriya: true, coalitionAligned: false },
                 expectedEnding: 'ending_pyrrhic',
                 expectedType: 'The Pyrrhic Victory'
             },
             {
-                name: 'Incremental (both + negotiated)',
-                flags: { trustedElena: true, sharedWithPriya: true, negotiated: true },
+                name: 'Incremental (inside track + movement + negotiated)',
+                flags: { sharedWithPriya: true, coalitionAligned: true, negotiated: true },
                 expectedEnding: 'ending_incremental',
                 expectedType: 'The Incremental Victory'
             },
             {
-                name: 'Walked Away (both + refused deal)',
-                flags: { trustedElena: true, sharedWithPriya: true, walkedAway: true },
+                name: 'Walked Away (inside track + movement + refused deal)',
+                flags: { sharedWithPriya: true, coalitionAligned: true, walkedAway: true },
                 expectedEnding: 'ending_walked_away',
                 expectedType: 'The Principled Stand'
             },
             {
-                name: 'The Almost (both allies, no leverage)',
-                flags: { trustedElena: true, sharedWithPriya: true },
+                name: 'The Almost (inside track + movement, no leverage)',
+                flags: { sharedWithPriya: true, coalitionAligned: true },
                 expectedEnding: 'ending_no_leverage',
                 expectedType: 'The Almost'
             },
             {
-                name: 'Elena burned + Priya (becomes Pyrrhic)',
-                flags: { trustedElena: true, elenaBurned: true, sharedWithPriya: true, negotiated: true },
-                expectedEnding: 'ending_pyrrhic',
-                expectedType: 'The Pyrrhic Victory'
+                name: 'Decoupled: incremental survives a burned Elena',
+                flags: { trustedElena: true, elenaBurned: true, sharedWithPriya: true, coalitionAligned: true, negotiated: true },
+                expectedEnding: 'ending_incremental',
+                expectedType: 'The Incremental Victory'
             },
             {
-                name: 'Elena burned + no Priya (becomes Status Quo)',
-                flags: { trustedElena: true, elenaBurned: true, sharedWithPriya: false },
-                expectedEnding: 'ending_status_quo',
-                expectedType: 'The Status Quo'
+                name: 'Decoupled: distrusting Elena does not block the best non-vote ending',
+                flags: { trustedElena: false, sharedWithPriya: true, coalitionAligned: true, negotiated: true },
+                expectedEnding: 'ending_incremental',
+                expectedType: 'The Incremental Victory'
             }
         ];
 
@@ -882,19 +884,44 @@ const TestRunner = {
         this.assert(dataChoice.setFlags.alignedWatchdog === true, 'Data choice aligns watchdog');
         this.assert(!dataChoice.setFlags.alignedCivilRights, 'Data choice does NOT align civil rights');
 
-        // Unified choice requires trustedElena, sets toldAmaraTruth and both alignments
-        const unifiedChoice = pitch.choices.find(c => c.conditionalOnly === 'trustedElena');
-        this.assert(unifiedChoice !== undefined, 'Group pitch has unified choice requiring trustedElena');
-        this.assert(unifiedChoice.setFlags.toldAmaraTruth === true, 'Unified choice sets toldAmaraTruth');
-        this.assert(unifiedChoice.setFlags.alignedCivilRights === true, 'Unified choice aligns civil rights');
-        this.assert(unifiedChoice.setFlags.alignedWatchdog === true, 'Unified choice aligns watchdog');
-        this.assert(!unifiedChoice.setFlags.choseRightsFrame, 'Unified choice does NOT set choseRightsFrame');
-        this.assert(!unifiedChoice.setFlags.choseDataFrame, 'Unified choice does NOT set choseDataFrame');
+        // Unified choice is NOT gated on trustedElena anymore — it is a gambit available to all,
+        // routed through a risk check, and sets no alignment flags on the choice itself.
+        const unifiedChoice = pitch.choices.find(c => c.nextDialogue === 'coalition_unify_router');
+        this.assert(unifiedChoice !== undefined, 'Group pitch has unified gambit routing through the unify risk check');
+        this.assert(unifiedChoice.conditionalOnly === undefined, 'Unified gambit is NOT gated on trustedElena (or any flag)');
+        this.assert(!unifiedChoice.setFlags, 'Unified gambit sets no flags on the choice (outcome depends on the risk check)');
+
+        // The unify risk check: receipts (foundEvidence) make it land; otherwise it fractures
+        this.assert(STORY.scenes.coalition_unify_router !== undefined, 'coalition_unify_router exists');
+        this.assertEqual(STORY.scenes.coalition_unify_router.routerId, 'coalition_unify_check', 'unify router has correct routerId');
+        this.assertEqual(
+            routeScene('coalition_unify_check', { foundEvidence: true }),
+            'coalition_frame_unified',
+            'Unify gambit with evidence -> coalition_frame_unified (it lands)'
+        );
+        this.assertEqual(
+            routeScene('coalition_unify_check', { foundEvidence: false }),
+            'coalition_frame_fractured',
+            'Unify gambit without evidence -> coalition_frame_fractured (it backfires)'
+        );
+
+        // The unified SCENE (the success) is where the alignment flags get set
+        const unifiedScene = STORY.scenes.coalition_frame_unified;
+        this.assert(unifiedScene.setFlags.toldAmaraTruth === true, 'coalition_frame_unified sets toldAmaraTruth');
+        this.assert(unifiedScene.setFlags.alignedCivilRights === true, 'coalition_frame_unified aligns civil rights');
+        this.assert(unifiedScene.setFlags.alignedWatchdog === true, 'coalition_frame_unified aligns watchdog');
+
+        // The fracture (failure) aligns NEITHER partner — worse than committing to one frame
+        const fracturedScene = STORY.scenes.coalition_frame_fractured;
+        this.assert(fracturedScene !== undefined, 'coalition_frame_fractured exists');
+        this.assert(!fracturedScene.setFlags || !fracturedScene.setFlags.alignedCivilRights, 'Fractured frame does NOT align civil rights');
+        this.assert(!fracturedScene.setFlags || !fracturedScene.setFlags.alignedWatchdog, 'Fractured frame does NOT align watchdog');
 
         // Frame reaction scenes route to Kai negotiation
         this.assertEqual(STORY.scenes.coalition_frame_rights.nextScene, 'coalition_negotiate_kai', 'Rights frame routes to Kai');
         this.assertEqual(STORY.scenes.coalition_frame_data.nextScene, 'coalition_negotiate_kai', 'Data frame routes to Kai');
         this.assertEqual(STORY.scenes.coalition_frame_unified.nextScene, 'coalition_negotiate_kai', 'Unified frame routes to Kai');
+        this.assertEqual(STORY.scenes.coalition_frame_fractured.nextScene, 'coalition_negotiate_kai', 'Fractured frame routes to Kai');
 
         // Kai has one choice that aligns and one that doesn't
         const kai = STORY.scenes.coalition_negotiate_kai;
@@ -951,10 +978,14 @@ const TestRunner = {
             'marcus_intro',
             'staffer_trust routes to marcus_intro'
         );
-        this.assertEqual(
-            STORY.scenes.marcus_intro.nextScene,
-            'coalition_call_intro',
-            'marcus_intro routes to coalition_call_intro'
+        // marcus_intro now ends in a choice fork; every branch leads to the coalition call
+        this.assert(
+            STORY.scenes.marcus_intro.choices.length >= 2,
+            'marcus_intro ends in a choice (move on vs. get suspicious)'
+        );
+        this.assert(
+            STORY.scenes.marcus_intro.choices.every(c => c.nextScene === 'coalition_call_intro'),
+            'every marcus_intro choice routes to coalition_call_intro'
         );
         this.assertEqual(
             STORY.scenes.staffer_dismiss.nextScene,
@@ -1139,10 +1170,10 @@ const TestRunner = {
         this.assert(cm.setFlags.miracleVictory === true, 'climax_miracle sets miracleVictory');
         this.assertEqual(cm.nextScene, 'ending_check', 'climax_miracle leads to ending_check');
 
-        // Perfect play: 5 swings + Elena + Priya + all 3 partners → miracle
+        // Perfect play: 5 swings + Priya + all 3 partners → miracle (Elena NOT required)
         // Unified frame (neither choseRightsFrame nor choseDataFrame) enables both hearing swings
         const miracleFlags = {
-            trustedElena: true, elenaBurned: false, sharedWithPriya: true,
+            sharedWithPriya: true,
             alignedCivilRights: true, alignedDisability: true, alignedWatchdog: true,
             coalitionAligned: true,
             seizedMoment: true, focusedAmendment7: true,
@@ -1151,21 +1182,21 @@ const TestRunner = {
         this.assertEqual(
             routeScene('miracle_check', miracleFlags),
             'climax_miracle',
-            'Perfect play (5 swings + Elena + Priya + 3/3 coalition) -> climax_miracle'
+            'Perfect play (5 swings + Priya + 3/3 coalition) -> climax_miracle'
         );
 
-        // 5 swings but NO Elena → no miracle (requires perfect play)
+        // DECOUPLE: the miracle no longer requires trusting Elena
         this.assertEqual(
             routeScene('miracle_check', { ...miracleFlags, trustedElena: false }),
-            'climax',
-            '5 swings without Elena -> climax (not perfect play)'
+            'climax_miracle',
+            '5 swings + 3/3 + Priya WITHOUT Elena -> still climax_miracle (Elena decoupled)'
         );
 
-        // 5 swings but Elena burned → no miracle
+        // DECOUPLE: a burned Elena does not block the miracle
         this.assertEqual(
-            routeScene('miracle_check', { ...miracleFlags, elenaBurned: true }),
-            'climax',
-            '5 swings with burned Elena -> climax (not perfect play)'
+            routeScene('miracle_check', { ...miracleFlags, trustedElena: true, elenaBurned: true }),
+            'climax_miracle',
+            '5 swings + 3/3 + Priya with a burned Elena -> still climax_miracle (decoupled)'
         );
 
         // 5 swings but NO Priya → no miracle
@@ -1175,27 +1206,31 @@ const TestRunner = {
             'Without Priya -> climax (not perfect play + fewer swings)'
         );
 
-        // 5 swings but missing one coalition partner → no miracle
+        // 5 swings but missing one coalition partner → still a defeat → the Breakthrough.
+        // (The partner count no longer gates the Breakthrough; it only gates Common Ground,
+        // which also requires Boyd. A defeat never falls through to the pass-written climax.)
         this.assertEqual(
             routeScene('miracle_check', { ...miracleFlags, alignedWatchdog: false }),
-            'climax',
-            '2/3 coalition (Diane left) -> climax (not perfect play)'
+            'climax_miracle',
+            '2/3 coalition (Diane left) but amendment defeated -> climax_miracle (Breakthrough)'
         );
         this.assertEqual(
             routeScene('miracle_check', { ...miracleFlags, alignedCivilRights: false }),
-            'climax',
-            '2/3 coalition (Amara left) -> climax (not perfect play)'
+            'climax_miracle',
+            '2/3 coalition (Amara left) but amendment defeated -> climax_miracle (Breakthrough)'
         );
 
-        // Testimony path: 5 swings but no Priya/Elena → no miracle
+        // Testimony path: 5 swings, no Priya → still a defeat → the Breakthrough (not Common Ground,
+        // which needs Boyd, and Boyd needs Priya's donor clue). Testimony players get a real win ending.
         const testimonyMax = {
             seizedMoment: true, preparedTestimony: true, focusedAmendment7: true,
             calledRecess: true, calledCommitteeMembers: true
         };
+        this.assert(!getAmendment7Result(testimonyMax).passed, 'Testimony path reaches 5 swings and defeats the amendment');
         this.assertEqual(
             routeScene('miracle_check', testimonyMax),
-            'climax',
-            'Testimony path 5 swings (no Elena/Priya) -> climax (not perfect play)'
+            'climax_miracle',
+            'Testimony path defeat (no Priya) -> climax_miracle (Breakthrough), not the pass climax'
         );
 
         // Missing seizedMoment → only 2 swings, passes
@@ -1337,25 +1372,48 @@ const TestRunner = {
         this.assert(STORY.scenes.boyd_flipped.setFlags.boydFlipped === true, 'boyd_flipped sets boydFlipped');
         this.assert(!STORY.scenes.boyd_noncommittal.setFlags, 'boyd_noncommittal does not flip Boyd');
 
-        // DEDUCTION GATE: correct frame only flips Boyd if you have the hawk receipts
+        // DEDUCTION GATE: the correct frame only flips Boyd if you assembled BOTH homework
+        // sources — his donor (Priya) AND his hawk record (committee calls / champion). One alone
+        // is a hunch he won't commit to.
         this.assertEqual(
-            routeScene('boyd_security', { clueBoydHawk: true }),
+            routeScene('boyd_security', { clueBoydHawk: true, clueBoydDonor: true }),
             'boyd_flipped',
-            'Security frame + hawk clue -> boyd_flipped'
+            'Security frame + both clues -> boyd_flipped'
         );
         this.assertEqual(
-            routeScene('boyd_security', { clueBoydHawk: false }),
+            routeScene('boyd_security', { clueBoydHawk: true, clueBoydDonor: false }),
             'boyd_noncommittal',
-            'Security frame WITHOUT hawk clue -> boyd_noncommittal (homework not done)'
+            'Security frame + hawk only -> boyd_noncommittal (one source short)'
+        );
+        this.assertEqual(
+            routeScene('boyd_security', { clueBoydHawk: false, clueBoydDonor: true }),
+            'boyd_noncommittal',
+            'Security frame + donor only -> boyd_noncommittal (one source short)'
+        );
+        this.assertEqual(
+            routeScene('boyd_security', { clueBoydHawk: false, clueBoydDonor: false }),
+            'boyd_noncommittal',
+            'Security frame + no homework -> boyd_noncommittal'
         );
 
-        // Clue seeding: Elena (trusted) reveals Marcus tie; Priya reveals donor + hawk;
-        // committee calls reveal hawk
-        this.assert(STORY.scenes.elena_trusted.setFlags.clueMarcusTie === true, 'elena_trusted seeds clueMarcusTie');
+        // Clue seeding is SPLIT across distinct sources — no single source hands you the answer:
+        //   donor  <- Priya's file (priya_ally), and ONLY donor
+        //   hawk   <- committee calls (act2_phones) / the champion's whip count
+        //   Marcus tie <- Elena (trusted), or earned via your own suspicion on the distrust path
+        this.assert(STORY.scenes.elena_trusted.setFlags.clueMarcusTie === true, 'elena_trusted seeds clueMarcusTie (Elena hands it to you)');
         this.assert(STORY.scenes.priya_ally.setFlags.clueBoydDonor === true, 'priya_ally seeds clueBoydDonor');
-        this.assert(STORY.scenes.priya_ally.setFlags.clueBoydHawk === true, 'priya_ally seeds clueBoydHawk');
-        this.assert(STORY.scenes.act2_phones.setFlags.clueBoydHawk === true, 'act2_phones seeds clueBoydHawk');
+        this.assert(!STORY.scenes.priya_ally.setFlags.clueBoydHawk, 'priya_ally does NOT seed clueBoydHawk (no longer a one-stop answer key)');
+        this.assert(STORY.scenes.act2_phones.setFlags.clueBoydHawk === true, 'act2_phones (committee calls) seeds clueBoydHawk');
         this.assert(STORY.scenes.marcus_intro.setFlags.metMarcus === true, 'marcus_intro sets metMarcus');
+
+        // DISTRUST THREAD: a wary player who never trusted Elena can still earn the Marcus tie
+        // through an active skeptical choice at marcus_intro.
+        const marcusSkeptic = STORY.scenes.marcus_intro.choices.find(c => c.setFlags && c.setFlags.clueMarcusTie === true);
+        this.assert(marcusSkeptic !== undefined, 'marcus_intro offers a skeptical choice that earns clueMarcusTie');
+        this.assert(marcusSkeptic.conditionalOnly === '!clueMarcusTie', 'The earn-it-yourself option only shows if you do not already have the clue');
+
+        // BETRAYAL COST: burning Elena now costs you the Marcus read she gave you (no longer nukes endings)
+        this.assert(STORY.scenes.elena_burned.setFlags.clueMarcusTie === false, 'elena_burned clears clueMarcusTie (the betrayal cost)');
 
         // VOTE MATH: boydFlipped adds a swing
         const boydSwing = getAmendment7Result({ boydFlipped: true });
@@ -1384,7 +1442,7 @@ const TestRunner = {
         this.assertEqual(sixSwings.margin, -3, 'Six swings: margin -3 (11-14)');
         this.assert(!sixSwings.passed, 'Six swings: amendment fails decisively');
 
-        // ROUTING: realignment supersedes the miracle when Boyd is flipped and amendment fails
+        // ROUTING: Common Ground = the full count (Priya + whole coalition) PLUS Boyd.
         const realignFlags = {
             boydFlipped: true,
             seizedMoment: true, sharedWithPriya: true, focusedAmendment7: true,
@@ -1395,14 +1453,36 @@ const TestRunner = {
         this.assertEqual(
             routeScene('miracle_check', realignFlags),
             'climax_realignment',
-            'Boyd flipped + amendment fails -> climax_realignment (beats miracle)'
+            'Full count + Boyd + amendment fails -> climax_realignment (Common Ground)'
+        );
+
+        // ANTI-SHORTCUT: Boyd cracked but coalition skipped -> the Breakthrough, NOT Common Ground.
+        // 5 swings (seized+Priya+focus+committee calls+Boyd) fails the amendment, but with no
+        // coalition partners aligned it is not the full count, so it must NOT reach climax_realignment.
+        const boydNoCoalition = {
+            boydFlipped: true,
+            seizedMoment: true, sharedWithPriya: true, focusedAmendment7: true,
+            calledCommitteeMembers: true
+        };
+        this.assert(!getAmendment7Result(boydNoCoalition).passed, 'Boyd-no-coalition build still defeats the amendment');
+        this.assertEqual(
+            routeScene('miracle_check', boydNoCoalition),
+            'climax_miracle',
+            'Boyd flipped but coalition skipped -> climax_miracle (Breakthrough, not Common Ground)'
         );
 
         // Boyd flipped but amendment still passes (too few other swings) -> ordinary climax
         this.assertEqual(
             routeScene('miracle_check', { boydFlipped: true, seizedMoment: true }),
             'climax',
-            'Boyd flipped but amendment passes -> climax (no realignment)'
+            'Boyd flipped but amendment passes -> climax (no defeat, no win ending)'
+        );
+
+        // ANY defeat lands on a "you won" scene, never the pass-written climax (the old fallthrough bug)
+        this.assertEqual(
+            routeScene('miracle_check', boydNoCoalition),
+            'climax_miracle',
+            'A defeated amendment never falls through to the pass-written climax'
         );
 
         // climax_realignment sets bipartisanWin and routes to ending_check
@@ -1467,11 +1547,17 @@ const TestRunner = {
         this.assert(whip.setFlags.clueBoydHawk === true, 'whip choice seeds clueBoydHawk (homework via the champion)');
         this.assert(!clean.setFlags.clueBoydHawk, 'clean choice does not seed clueBoydHawk');
 
-        // The clue from the champion still has to be deduced into a flip at the whip-count commit
+        // The champion's hawk clue still only flips Boyd when combined with the donor clue
+        // (the second source) and the security frame — homework from two places, then the deduction.
         this.assertEqual(
-            routeScene('boyd_security', { clueBoydHawk: true }),
+            routeScene('boyd_security', { clueBoydHawk: true, clueBoydDonor: true }),
             'boyd_flipped',
-            'Champion-sourced hawk clue + security frame -> boyd_flipped'
+            'Champion-sourced hawk clue + Priya donor clue + security frame -> boyd_flipped'
+        );
+        this.assertEqual(
+            routeScene('boyd_security', { clueBoydHawk: true, clueBoydDonor: false }),
+            'boyd_noncommittal',
+            'Champion hawk clue alone (no donor) -> boyd_noncommittal'
         );
 
         // Okafor shows up where it matters: defending the bill at markup and at the vote
