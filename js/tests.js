@@ -54,6 +54,7 @@ const TestRunner = {
         this.testVoteCount();
         this.testBoydPuzzle();
         this.testChampionAndCoffee();
+        if (typeof getWalkPlan !== 'undefined') this.testOverworld();
 
         console.log(`\n${'='.repeat(50)}`);
         console.log(`Tests: ${this.passed} passed, ${this.failed} failed`);
@@ -1571,6 +1572,60 @@ const TestRunner = {
             const speakers = STORY.scenes[id].dialogue.map(d => d.speaker);
             this.assert(speakers.includes('Okafor'), `${id} pays off the champion`);
         }
+    },
+
+    // Overworld: every scene that can open a location yields a walk target the player can reach
+    testOverworld() {
+        console.log('\n--- Overworld Tests ---');
+
+        for (const loc of Object.values(LOCATIONS)) {
+            this.assert(BACKGROUND_TO_ROOM[loc.background] !== undefined, `overworld room exists for ${loc.background}`);
+        }
+        for (const id of Object.keys(OVERWORLD_WALKS)) {
+            this.assert(STORY.scenes[id] !== undefined, `overworld walk ${id} names a real scene`);
+        }
+
+        const overlaps = (x, y, r) => x + 0.28 > r.x && x - 0.28 < r.x + r.w && y + 0.2 > r.y && y - 0.2 < r.y + r.h;
+        for (const [key, room] of Object.entries(OVERWORLD_ROOMS)) {
+            const solid = room.furniture.filter(f => f.solid !== false);
+            const [sx, sy] = room.spawn;
+            this.assert(!solid.some(f => overlaps(sx, sy, f)), `${key} spawn is not inside furniture`);
+            for (const [name, [x, y]] of Object.entries(room.spots)) {
+                this.assert(x > 0.5 && x < OVERWORLD_W - 0.5 && y > 1 && y < OVERWORLD_H - 0.5 && !solid.some(f => overlaps(x, y, f)),
+                    `${key} spot for ${name} is open floor`);
+            }
+        }
+
+        for (const [id, scene] of Object.entries(STORY.scenes)) {
+            if (scene.isRouter) continue;
+            const plan = getWalkPlan(id, scene);
+            const room = OVERWORLD_ROOMS[plan.roomKey];
+            const reachable = plan.target.type === 'obj'
+                ? room.furniture.some(f => f.id === plan.target.id)
+                : plan.cast.includes(plan.target.id) &&
+                  (room.spots[plan.target.id] !== undefined || room.freeSpots.length > 0);
+            this.assert(reachable, `${id} walk target ${plan.target.id} exists in ${plan.roomKey}`);
+        }
+
+        // Walk-to choices: every option resolves in its scene's room and every choice is reachable
+        for (const [id, cfg] of Object.entries(OVERWORLD_CHOICES)) {
+            const scene = STORY.scenes[id];
+            this.assert(scene && scene.choices, `walk-to choice ${id} is a choice scene`);
+            const targets = getChoiceTargets(id, scene.choices.filter(c => !c.conditionalOnly));
+            this.assert(targets !== null, `${id} maps every unconditional choice to a spot`);
+            const room = OVERWORLD_ROOMS[getRoomKey(scene)];
+            const cast = getWalkPlan(id, scene).cast.concat(room.defaultCast);
+            for (const t of targets || []) {
+                const exists = t.type === 'obj' ? room.furniture.some(f => f.id === t.id) : cast.includes(t.id) && room.spots[t.id];
+                this.assert(exists, `${id} option ${t.type}:${t.id} exists in ${getRoomKey(scene)}`);
+            }
+            // A timer must never route anywhere on its own: Common Ground stays gated on the puzzle alone
+            if (cfg.timer) this.assert(!('timeout' in cfg.timer), `${id} timer has no timeout outcome`);
+        }
+        this.assertEqual(getRoomKey(STORY.scenes.whip_boyd_choice), 'hallway', 'whip_boyd_choice is staged in the hallway');
+
+        this.assertDeepEqual(getWalkPlan('intro', STORY.scenes.intro).target, { type: 'npc', id: 'Sarah' }, 'intro walk ends at Sarah');
+        this.assertEqual(getWalkPlan('the_filibuster', STORY.scenes.the_filibuster).roomKey, 'bar', 'the_filibuster walks the bar');
     }
 };
 

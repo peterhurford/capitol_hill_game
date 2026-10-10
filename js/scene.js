@@ -1,8 +1,11 @@
 // Scene Management - Handles scene transitions, backgrounds, and game state
 
 class SceneManager {
-    constructor(dialogueEngine) {
+    constructor(dialogueEngine, overworld = null) {
         this.dialogue = dialogueEngine;
+        this.overworld = overworld;
+        this.currentLocation = null;  // a change of location (or staged room) sends the player into the overworld
+        this.skipWalkOnce = false;    // set by a walk-to choice: the player already walked to where the next scene happens
         this.sceneBackground = document.getElementById('scene-background');
         this.locationIndicator = document.getElementById('location-indicator');
 
@@ -17,6 +20,7 @@ class SceneManager {
     initGame() {
         // Copy initial flags
         this.gameFlags = { ...STORY.initialFlags };
+        this.currentLocation = null;
     }
 
     // Load a scene by ID
@@ -93,8 +97,18 @@ class SceneManager {
 
     // Handle scene transition with fade
     transitionToScene(scene) {
+        let walk = this.overworld &&
+            (scene.location !== this.currentLocation || this.overworld.roomFor(scene) !== this.overworld.roomKey);
+        if (walk && this.skipWalkOnce && this.overworld.roomFor(scene) === this.overworld.roomKey) {
+            walk = false;
+            this.currentLocation = scene.location;
+            this.overworld.setTimeOfDay(scene.location);
+        }
+        this.skipWalkOnce = false;
+
         // Fade out
         this.sceneBackground.style.opacity = '0';
+        if (walk) this.overworld.fadeOut();
         this.locationIndicator.classList.remove('visible');
         this.dialogue.hideDialogueBox();
 
@@ -115,15 +129,24 @@ class SceneManager {
             // Fade in
             this.sceneBackground.style.opacity = '1';
 
-            setTimeout(() => {
-                this.locationIndicator.classList.add('visible');
-
-                // Start dialogue
+            const startDialogue = () => {
                 if (scene.dialogue && scene.dialogue.length > 0) {
                     this.dialogue.startDialogue(scene.dialogue, () => {
                         this.onDialogueComplete(scene);
                     });
                 }
+            };
+
+            if (walk) {
+                this.currentLocation = scene.location;
+                this.overworld.enterScene(scene.id, scene, startDialogue);
+            } else if (this.overworld) {
+                this.overworld.syncCast(scene);
+            }
+
+            setTimeout(() => {
+                this.locationIndicator.classList.add('visible');
+                if (!walk) startDialogue();
             }, 300);
         }, this.transitionDuration);
     }
@@ -146,9 +169,19 @@ class SceneManager {
             return true;
         }) : [];
         if (availableChoices.length > 0) {
-            this.dialogue.showChoices(availableChoices, (choice) => {
+            const pick = (choice) => {
+                this.skipWalkOnce = true;
                 this.handleChoice(choice);
-            });
+            };
+            const walkable = this.overworld && this.overworld.startChoice(scene.id, availableChoices, pick,
+                (subset) => this.dialogue.showChoices(subset, pick));
+            if (walkable) {
+                this.dialogue.hideDialogueBox();
+            } else {
+                this.dialogue.showChoices(availableChoices, (choice) => {
+                    this.handleChoice(choice);
+                });
+            }
         } else if (scene.nextScene) {
             // Auto-advance to next scene after a brief pause
             setTimeout(() => {
@@ -189,7 +222,7 @@ class SceneManager {
             // Add restart option
             setTimeout(() => {
                 const restartBtn = document.createElement('button');
-                restartBtn.className = 'choice-btn visible';
+                restartBtn.className = 'choice-btn visible selected';
                 restartBtn.textContent = 'Play Again';
                 restartBtn.style.marginTop = '50px';
                 restartBtn.addEventListener('click', () => {

@@ -13,6 +13,7 @@
             <div class="menu-content">
                 <h1 class="game-title">Capitol Hill</h1>
                 <h2 class="game-subtitle">The Markup</h2>
+                <p class="menu-controls">WASD or arrows to walk &middot; E or Space to talk &middot; big decisions happen where you walk</p>
                 <div class="menu-buttons">
                     <button id="start-btn" class="menu-btn">Start Game</button>
                     <button id="continue-btn" class="menu-btn" disabled>Continue</button>
@@ -24,6 +25,13 @@
         <div id="game-screen" class="screen">
             <!-- Background -->
             <div id="scene-background"></div>
+
+            <!-- Top-down walkable room -->
+            <canvas id="overworld-canvas"></canvas>
+            <div id="objective"></div>
+            <div id="controls-hint">WASD / arrows to move &middot; E to interact</div>
+            <div id="toast"></div>
+            <div id="timer"></div>
 
             <!-- Location Indicator -->
             <div id="location-indicator"></div>
@@ -45,6 +53,7 @@
 
     <script src="js/story.js"></script>
     <script src="js/dialogue.js"></script>
+    <script src="js/overworld.js"></script>
     <script src="js/scene.js"></script>
     <script src="js/main.js"></script>
 </body>

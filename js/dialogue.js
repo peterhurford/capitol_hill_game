@@ -25,6 +25,7 @@ class DialogueEngine {
         this.currentDialogue = dialogueArray;
         this.currentIndex = 0;
         this.onComplete = onComplete;
+        this.active = true;
 
         this.showDialogueBox();
         this.showCurrentLine();
@@ -46,6 +47,7 @@ class DialogueEngine {
         if (this.currentIndex >= this.currentDialogue.length) {
             // Dialogue complete
             this.hideContinueIndicator();
+            this.active = false;
             if (this.onComplete) {
                 this.onComplete();
             }
@@ -128,8 +130,8 @@ class DialogueEngine {
 
     // Advance to next line
     advance() {
-        // Prevent rapid clicking
-        if (this.isAdvancing) {
+        // Ignore input between scenes and after the last line, so it can't re-fire onComplete
+        if (!this.active || this.isAdvancing) {
             return;
         }
 
@@ -182,6 +184,7 @@ class DialogueEngine {
             button.className = 'choice-btn';
             button.textContent = choice.text;
             button.addEventListener('click', () => this.selectChoice(index, choice));
+            button.addEventListener('mouseenter', () => this.highlightChoice(index));
             this.choiceContainer.appendChild(button);
 
             // Staggered animation
@@ -191,6 +194,34 @@ class DialogueEngine {
         });
 
         this.choiceContainer.classList.add('visible');
+        this.choicesShownAt = Date.now();
+        this.highlightChoice(0);
+    }
+
+    // Keyboard choice navigation; works on any buttons in the container (incl. "Play Again")
+    choiceButtons() {
+        if (!this.choiceContainer.classList.contains('visible')) return [];
+        return [...this.choiceContainer.querySelectorAll('.choice-btn')];
+    }
+
+    highlightChoice(index) {
+        this.choiceButtons().forEach((b, i) => b.classList.toggle('selected', i === index));
+    }
+
+    moveChoice(delta) {
+        const buttons = this.choiceButtons();
+        if (!buttons.length) return;
+        const current = buttons.findIndex(b => b.classList.contains('selected'));
+        const next = current < 0 ? 0 : (current + delta + buttons.length) % buttons.length;
+        this.highlightChoice(next);
+    }
+
+    // A short guard stops a held or mashed advance key from picking the first choice blind.
+    confirmChoice(index = null) {
+        if (Date.now() - (this.choicesShownAt || 0) < 500) return;
+        const buttons = this.choiceButtons();
+        const button = index !== null ? buttons[index] : buttons.find(b => b.classList.contains('selected'));
+        if (button) button.click();
     }
 
     // Handle choice selection
@@ -220,6 +251,7 @@ class DialogueEngine {
         this.currentDialogue = [];
         this.currentIndex = 0;
         this.isTyping = false;
+        this.active = false;
         clearInterval(this.typewriterInterval);
         this.dialogueText.textContent = '';
         this.characterName.textContent = '';

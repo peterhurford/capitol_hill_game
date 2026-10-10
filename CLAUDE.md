@@ -4,17 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Capitol Hill: The Markup is a browser-based interactive narrative game about policy advocacy in the US Congress. The player works for the American AI Policy Center (AAPC) navigating relationships and coalition dynamics to influence a committee vote on the Frontier AI Safety Act. Pure vanilla JS/HTML/CSS with no build process or dependencies.
+Capitol Hill: The Markup is a browser-based top-down (WASD) narrative game about policy advocacy in the US Congress. The player works for the American AI Policy Center (AAPC) navigating relationships and coalition dynamics to influence a committee vote on the Frontier AI Safety Act. Pure vanilla JS/HTML/CSS with no build process or dependencies.
 
 ## Running and Testing
 
-- **Play the game:** Open `index.html` in a browser
+- **Play the game:** Open `index.html` in a browser. WASD/arrows walk, E/Space/Enter interact; in dialogue those keys or Right/Down advance; at button choices W/S/A/D or arrows move the highlight and E (or 1-9) picks
 - **Run tests:** Open `tests.html` in a browser (auto-runs on load, click "Run Tests" to re-run)
 - **No build step, no npm, no package manager** — everything runs directly in the browser
 
 ## Architecture
 
-Four JS modules loaded via `<script>` tags (order matters):
+Five JS modules loaded via `<script>` tags (order matters):
 
 1. **`js/story.js`** (~4000 lines) — All game data: scene definitions (91 scenes), the `LOCATIONS` registry, `SPEAKER_STYLES`/`SPEAKER_GROUPS` mappings, `ROUTING_RULES`, and vote counting logic. This is the content layer.
 
@@ -22,9 +22,15 @@ Four JS modules loaded via `<script>` tags (order matters):
 
 3. **`js/scene.js`** — `SceneManager` class. Loads scenes by ID from `STORY`, processes conditional dialogue, handles scene transitions with fades, manages day progression (Mon-Wed, 3 days), filters choices by `conditionalOnly`, and routes through the `routeScene()` system. Auto-saves after each scene load.
 
-4. **`js/main.js`** — `Game` class. Entry point. Manages menu/game screen toggling, save/load via localStorage (key: `"capitol_save"`), wires up click/spacebar to advance.
+4. **`js/overworld.js`** — `Overworld` class plus room data. Canvas top-down rooms (`OVERWORLD_ROOMS`, one per background via `BACKGROUND_TO_ROOM`), the player sprite, collision, and E-to-interact. `getWalkPlan(sceneId, scene)` is pure and picks the walk target: `OVERWORLD_WALKS[sceneId]` if listed (`'Name'` or `'obj:furnitureId'`), else the first on-stage speaker, else the room's first furniture with an `id`.
 
-**Data flow:** `Game` → `SceneManager` → `DialogueEngine`, with `STORY` object as the shared data source.
+5. **`js/main.js`** — `Game` class. Entry point. Manages menu/game screen toggling, save/load via localStorage (key: `"capitol_save"`), and routes keys between overworld, dialogue and choices.
+
+**Data flow:** `Game` → `SceneManager` → `Overworld` + `DialogueEngine`, with `STORY` object as the shared data source.
+
+**Overworld flow:** whenever a scene's `location` string or staged room differs from the previous scene's, `SceneManager.transitionToScene` hands the player to the overworld and starts the dialogue only when they press E on the target. `OVERWORLD_SCENE_ROOMS` stages scenes in a room other than their background's (the recess and Boyd scenes play in the `hallway`). Same-room scenes skip the walk; rooms with `liveCast: true` add newly speaking characters as sprites (`syncCast`). The office is `liveCast: false` because its speakers are often on the phone.
+
+**Walk-to choices:** scenes in `OVERWORLD_CHOICES` (the time-pressure fork, news break, Act 2 strategy and MindScale response, recess, and the Boyd approach) are decided by walking to a spot and pressing E instead of clicking a button; the choice objects and their flags are unchanged. `getChoiceTargets` falls back to buttons if any available choice is unmapped. After a walk-to choice, `skipWalkOnce` stops the next scene from asking for a second walk in the same room. The Boyd approach runs a countdown with chasing reporters, but a timer is **pressure only**: on expiry every option opens as buttons, so dexterity never locks out Common Ground (the puzzle alone gates it). `testOverworld` asserts every walk target and choice spot exists, every spawn/spot is open floor, and no timer carries a `timeout` outcome.
 
 ## Story Flow
 
@@ -117,13 +123,14 @@ Standing guidance, easy to regress:
 
 Tests live in `js/tests.js` using a custom `TestRunner` class with `assert()`, `assertEqual()`, and `assertDeepEqual()`. Tests validate: location registry, speaker style mappings, routing rules, conditional dialogue processing, scene structure integrity, character payoffs, ending reachability, vote counting, and flag coverage. Tests operate on the `STORY` data directly — they don't require DOM interaction.
 
-**Running them under Node** (no browser): write a temporary harness in the repo root — not `/tmp` — that `vm`-evals `story.js` then `tests.js` with `const`/`let` rewritten to `var`. `TestRunner` is a **singleton object** (`const TestRunner = {...}`), not a class: call its `test*` methods directly off the object, then read `TestRunner.passed`/`failed`/`results`. Filter the expected `SceneManager is not defined` throw from `testConditionalDialogue`, which is DOM-only. Delete the harness afterwards.
+**Running them under Node** (no browser): write a temporary harness in the repo root — not `/tmp` — that `vm`-evals `story.js`, `overworld.js`, then `tests.js` with `const`/`let` rewritten to `var`. `TestRunner` is a **singleton object** (`const TestRunner = {...}`), not a class: call its `test*` methods directly off the object, then read `TestRunner.passed`/`failed`/`results`. Filter the expected `SceneManager is not defined` throw from `testConditionalDialogue`, which is DOM-only. Delete the harness afterwards.
 
 ## Adding Content
 
 - **New scenes:** Add to the `STORY` object in `story.js`. Each scene needs: `id`, `day`, `location` (from `LOCATIONS`), `background`, `dialogue` array, and either `nextScene`, `choices`, or `isRouter`+`routerId`.
 - **New speakers:** Add to `SPEAKER_STYLES` (direct mapping) or `SPEAKER_GROUPS` (group mapping) in story.js, and add corresponding CSS class in `css/style.css`.
-- **New locations:** Add to the `LOCATIONS` object in story.js.
+- **New locations:** Add to the `LOCATIONS` object in story.js; a new background also needs a room in `OVERWORLD_ROOMS` and an entry in `BACKGROUND_TO_ROOM`.
+- **New location-opening scenes:** add an `OVERWORLD_WALKS` entry if the fallback target (first on-stage speaker) is wrong.
 - **New routing rules:** Add conditions array to `ROUTING_RULES` in story.js.
 - **New flags:** Just use them in `setFlags` and reference in conditionals/routing. Update tests to cover new paths.
 
@@ -133,7 +140,8 @@ Tests live in `js/tests.js` using a custom `TestRunner` class with `assert()`, `
 - `setFlags` is a static object and cannot be conditional — use a router scene for conditional flag setting.
 - `conditionalOnly` filtering on *choices* happens in `SceneManager.onDialogueComplete()`, not in `DialogueEngine`.
 - Router scenes need **both** `isRouter: true` and a `routerId`.
-- Scene transitions carry a 500ms fade plus 300ms delays — auto-advance scripts must account for them.
+- Scene transitions carry a 500ms fade plus 300ms delays — auto-advance scripts must account for them. A location change also waits on the player walking to the target.
+- The overworld runs on `requestAnimationFrame`, which pauses in a background tab; to drive it from automation, call `game.overworld.update(1/60)` in a loop.
 
 ## Save System
 
