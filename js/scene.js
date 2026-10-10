@@ -137,16 +137,34 @@ class SceneManager {
                 }
             };
 
+            // On entering a room, the scene's opening Narrator lines play first; then the player
+            // walks to the target, and pressing E starts the rest. All-narration scenes skip the walk.
+            const enterRoom = () => {
+                const lines = scene.dialogue || [];
+                let n = 0;
+                while (n < lines.length && lines[n].speaker === 'Narrator') n++;
+                const intro = lines.slice(0, n), rest = lines.slice(n);
+                const finish = () => this.onDialogueComplete(scene);
+                const walkThenTalk = () => {
+                    if (!rest.length) return finish();
+                    this.dialogue.hideDialogueBox();
+                    this.overworld.beginWalk(() => this.dialogue.startDialogue(rest, finish));
+                };
+                if (intro.length) this.dialogue.startDialogue(intro, walkThenTalk);
+                else walkThenTalk();
+            };
+
             if (walk) {
                 this.currentLocation = scene.location;
-                this.overworld.enterScene(scene.id, scene, startDialogue);
+                this.overworld.enterScene(scene.id, scene);
             } else if (this.overworld) {
                 this.overworld.syncCast(scene);
             }
 
             setTimeout(() => {
                 this.locationIndicator.classList.add('visible');
-                if (!walk) startDialogue();
+                if (walk) enterRoom();
+                else startDialogue();
             }, 300);
         }, this.transitionDuration);
     }

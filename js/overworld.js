@@ -168,8 +168,9 @@ const OVERWORLD_ROOMS = {
     },
     mall: {
         floor: ['#18241e', '#16221c'], wall: null, wallTrim: null,
-        liveCast: true,
-        defaultCast: ['Sarah'],
+        // Everyone who speaks at the Mall does it by phone.
+        liveCast: false,
+        defaultCast: [],
         spawn: [1.6, 8.2],
         path: { y: 7.4, h: 1.4, color: '#3a3a36' },
         furniture: [
@@ -184,8 +185,8 @@ const OVERWORLD_ROOMS = {
             { kind: 'tree', x: 14.4, y: 1.6, w: 1, h: 1 }, { kind: 'tree', x: 17.6, y: 1.4, w: 1, h: 1 },
             { kind: 'tree', x: 3, y: 10.6, w: 1, h: 1 }, { kind: 'tree', x: 16.5, y: 10.4, w: 1, h: 1 }
         ],
-        spots: { Sarah: [9.6, 9.6], Priya: [13.6, 8.2], Amara: [7, 3.6], Elena: [15.6, 3.4] },
-        freeSpots: [[11, 3.6]],
+        spots: {},
+        freeSpots: [],
         extras: []
     }
 };
@@ -198,19 +199,19 @@ const BACKGROUND_TO_ROOM = {
 // Walk targets for scenes that open a new location. Unlisted scenes fall back to their first
 // on-screen speaker, then to the room's first targetable object.
 const OVERWORLD_WALKS = {
-    intro: { target: 'Sarah', objective: 'Sarah has the morning rundown. Go find her.' },
+    intro: { target: 'obj:desk', objective: 'Get to your desk.' },
     the_filibuster: { target: 'Elena', objective: 'Elena is waiting in a booth at the back.' },
     stakeholder_meeting: { target: 'obj:seat', objective: "Take AAPC's one seat at the table." },
     coalition_call_intro: { target: 'obj:speakerphone', objective: 'The coalition call starts at three. Get on the speakerphone.' },
     inbox_triage: { target: 'obj:desk', objective: 'Your inbox is filling up. Get to your desk.' },
-    time_pressure_choice: { target: 'Sarah', objective: 'Sarah is waiting with the calendar.' },
+    time_pressure_choice: { target: 'obj:desk', objective: 'Get to your desk.' },
     testimony_prep: { target: 'obj:desk', objective: 'The testimony won\'t write itself. Back to your desk.' },
     think_tank: { target: 'Priya', objective: 'Find Priya.' },
     aftermath_priya: { target: 'obj:desk', objective: 'Back at the office. Get to your desk.' },
     news_break: { target: 'obj:desk', objective: 'Your phone is lighting up. Get to your desk.' },
     news_fast: { target: 'obj:desk', objective: 'Write it. Your desk.' },
     news_slow: { target: 'obj:desk', objective: 'Morning. Get to your desk.' },
-    act2_morning: { target: 'Sarah', objective: 'Sarah has the overnight coverage.' },
+    act2_morning: { target: 'obj:desk', objective: 'Get to your desk.' },
     act2_mindscale: { target: 'Sarah', objective: 'Sarah is waving you over.' },
     elena_burned: { target: 'obj:desk', objective: 'Late. One more thing at your desk.' },
     markup_hearing_open: { target: 'Sarah', objective: 'Sarah saved you a seat in the gallery.' },
@@ -220,7 +221,7 @@ const OVERWORLD_WALKS = {
     whip_boyd_choice: { target: 'Sarah', objective: 'Sarah is waiting behind a column.' },
     boyd_skipped: { target: 'Sarah', objective: 'Find Sarah.' },
     markup_hearing_vote: { target: 'obj:gallery', objective: "They're calling the vote. Back to your seat." },
-    climax: { target: 'Sarah', objective: 'Sarah is waiting by the Reflecting Pool.' }
+    climax: { target: 'obj:bench', objective: 'Find a bench.' }
 };
 
 // Choices made by walking: each option is a spot ('obj:id' or 'npc:Name') that commits one
@@ -419,8 +420,8 @@ class Overworld {
         this.viewH = h;
     }
 
-    // Build the room for a scene and hand control to the player until they reach the target.
-    enterScene(sceneId, scene, onArrive) {
+    // Build the room for a scene. The player stands still until beginWalk().
+    enterScene(sceneId, scene) {
         this.plan = getWalkPlan(sceneId, scene);
         this.roomKey = this.plan.roomKey;
         this.room = OVERWORLD_ROOMS[this.plan.roomKey];
@@ -450,14 +451,21 @@ class Overworld {
         this.player.skin = '#e8b890';
         this.player.hair = '#3a2818';
 
+        this.onArrive = null;
+        this.mode = 'cutscene';
+        this.keys.clear();
+        this.canvas.classList.add('visible');
+        this.startLoop();
+    }
+
+    // Hand control to the player until they press E on the walk target.
+    beginWalk(onArrive) {
         this.onArrive = onArrive;
         this.mode = 'walk';
         this.keys.clear();
         this.objectiveEl.textContent = this.plan.objective;
         this.objectiveEl.classList.add('visible');
         this.hintEl.classList.add('visible');
-        this.canvas.classList.add('visible');
-        this.startLoop();
     }
 
     roomFor(scene) {

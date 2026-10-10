@@ -1624,7 +1624,8 @@ const TestRunner = {
         }
         this.assertEqual(getRoomKey(STORY.scenes.whip_boyd_choice), 'hallway', 'whip_boyd_choice is staged in the hallway');
 
-        this.assertDeepEqual(getWalkPlan('intro', STORY.scenes.intro).target, { type: 'npc', id: 'Sarah' }, 'intro walk ends at Sarah');
+        this.assertDeepEqual(getWalkPlan('intro', STORY.scenes.intro).target, { type: 'obj', id: 'desk' }, 'intro walk ends at your desk');
+        this.assertDeepEqual(getWalkPlan('climax', STORY.scenes.climax).cast, [], 'nobody stands at the Mall (all phone calls)');
         this.assertEqual(getWalkPlan('the_filibuster', STORY.scenes.the_filibuster).roomKey, 'bar', 'the_filibuster walks the bar');
     }
 };
