@@ -26,7 +26,7 @@ const OVERWORLD_ROOMS = {
               text: 'The coffee maker. It has outlived two executive directors.' },
             { kind: 'cabinet', x: 0.6, y: 5, w: 1, h: 3, color: '#6c6e66',
               text: 'Filing cabinets. Two failed bills, filed alphabetically.' },
-            { kind: 'couch', x: 1, y: 9.6, w: 3, h: 1, color: '#5a4038',
+            { id: 'couch', label: 'the couch', kind: 'couch', x: 1, y: 9.6, w: 3, h: 1, color: '#5a4038',
               text: 'The office couch. Load-bearing during markup weeks.' },
             { kind: 'plant', x: 18.3, y: 9.6, w: 0.9, h: 0.9,
               text: 'A ficus nobody admits to watering.' },
@@ -156,7 +156,7 @@ const OVERWORLD_ROOMS = {
             { kind: 'bench', x: 5.5, y: 10.7, w: 3, h: 0.5, color: '#4a3a2c' },
             { kind: 'bench', x: 11.5, y: 10.7, w: 3, h: 0.5, color: '#4a3a2c' }
         ],
-        spots: { Torres: [2.4, 6], Boyd: [18.5, 6], Sarah: [8.45, 5.0], Priya: [6, 6] },
+        spots: { Torres: [2.4, 6], Boyd: [18.5, 6], Sarah: [8.45, 5.0], Priya: [6, 6], Elena: [11, 5.6] },
         freeSpots: [[14.5, 5.8]],
         // Movers walk back and forth on a path; reporters chase the player while a timer runs.
         movers: [
@@ -164,7 +164,46 @@ const OVERWORLD_ROOMS = {
             { path: [[17, 9.6], [3, 9.6]], speed: 1.1, color: '#5a4a5a' }
         ],
         reporters: [[14.5, 6.8], [6, 9], [11, 2.1]],
+        // With the flag set, Elena holds the reporters mid-hall and they never chase.
+        interference: { flag: 'elenaRunsInterference', npc: 'Elena', reporters: [[12.2, 5.3], [10, 6.5], [12, 6.7]] },
         extras: []
+    },
+    apartment: {
+        floor: ['#4e3e30', '#4a3b2e'], wall: '#353c4a', wallTrim: '#1a1e26',
+        // Sarah calls from home.
+        liveCast: false,
+        defaultCast: [],
+        spawn: [10, 10.6],
+        furniture: [
+            { id: 'bed', label: 'bed', kind: 'couch', x: 1, y: 1.4, w: 3.4, h: 2.6, color: '#46566c',
+              text: 'Unmade since Sunday. A committee print is folded into the sheets.' },
+            { kind: 'window', x: 7, y: 0.25, w: 3.5, h: 0.7, z: 0,
+              text: 'A sliver of the Capitol dome between two apartment blocks. The rent includes the sliver.' },
+            { kind: 'tv', x: 12, y: 0.25, w: 2.4, h: 0.7, z: 0,
+              text: 'Cable news on mute. Prometheus shipped another model today, Titan 4. Every launch is "the most capable yet."',
+              disruptedText: 'BREAKING, in red. The chyron has stopped scrolling: HOSPITAL AI AGENT INCIDENT.' },
+            { kind: 'counter', x: 17.4, y: 1.4, w: 2, h: 3.4, color: '#5c5a52',
+              text: 'The kitchen. One pot, one pan, a drawer of takeout menus from places near the office.' },
+            { id: 'laptop', label: 'your laptop', kind: 'table', x: 12.6, y: 5, w: 3, h: 1.6, color: '#5a4630',
+              text: 'The kitchen table, also your second desk. The laptop is still warm.' },
+            { kind: 'chair', x: 13.6, y: 6.8, w: 0.8, h: 0.7, solid: false, color: '#4a3a28' },
+            { id: 'couch', label: 'the couch', kind: 'couch', x: 2, y: 7.4, w: 3.4, h: 1.2, color: '#6a4a3a',
+              text: 'It came with the apartment. So did the stain.' },
+            { kind: 'shelf', x: 1, y: 10.6, w: 3, h: 0.7, color: '#5a4630',
+              text: 'Caro, Federalist Papers, a CRS report you took home to read in 2024.' },
+            { kind: 'plant', x: 18.3, y: 9.6, w: 0.9, h: 0.9,
+              text: 'A succulent. The only thing in here that is thriving.' },
+            { id: 'door', label: 'the door', kind: 'door', x: 9, y: 11.5, w: 2, h: 0.5, z: 0 }
+        ],
+        spots: {},
+        freeSpots: [],
+        extras: [],
+        // What disrupt() lights up: the phone on the couch and a stack of notifications above it.
+        disruption: {
+            phone: [3.7, 7.75],
+            notes: ['Sarah: CALL ME', 'Capitol Gazette: BREAKING - hospital AI agent incident',
+                    'Sarah: missed call (3)', 'coalition-list: 23 new messages', 'Webb: comment tonight?']
+        }
     },
     mall: {
         floor: ['#18241e', '#16221c'], wall: null, wallTrim: null,
@@ -193,11 +232,12 @@ const OVERWORLD_ROOMS = {
 
 const BACKGROUND_TO_ROOM = {
     'bg-office': 'office', 'bg-coalition': 'office', 'bg-bar': 'bar', 'bg-conference': 'conference',
-    'bg-thinktank': 'thinktank', 'bg-capitol': 'capitol', 'bg-mall': 'mall'
+    'bg-thinktank': 'thinktank', 'bg-capitol': 'capitol', 'bg-mall': 'mall', 'bg-apartment': 'apartment'
 };
 
 // Walk targets for scenes that open a new location. Unlisted scenes fall back to their first
-// on-screen speaker, then to the room's first targetable object.
+// on-screen speaker, then to the room's first targetable object. A `prelude` is an earlier walk
+// whose arrival calls the room's disrupt() before the scene's opening lines.
 const OVERWORLD_WALKS = {
     intro: { target: 'obj:desk', objective: 'Get to your desk.' },
     the_filibuster: { target: 'Elena', objective: 'Elena is waiting in a booth at the back.' },
@@ -208,12 +248,13 @@ const OVERWORLD_WALKS = {
     testimony_prep: { target: 'obj:desk', objective: 'The testimony won\'t write itself. Back to your desk.' },
     think_tank: { target: 'Priya', objective: 'Find Priya.' },
     aftermath_priya: { target: 'obj:desk', objective: 'Back at the office. Get to your desk.' },
-    news_break: { target: 'obj:desk', objective: 'Your phone is lighting up. Get to your desk.' },
-    news_fast: { target: 'obj:desk', objective: 'Write it. Your desk.' },
-    news_slow: { target: 'obj:desk', objective: 'Morning. Get to your desk.' },
-    act2_morning: { target: 'obj:desk', objective: 'Get to your desk.' },
+    news_break: { target: 'obj:couch', objective: 'Your phone is buzzing on the couch.',
+                  prelude: { target: 'obj:bed', objective: 'Home. Bed.' } },
+    news_fast: { target: 'Sarah', objective: 'Morning. Sarah has the coverage up.' },
+    news_slow: { target: 'Sarah', objective: 'Morning. Sarah has the coverage up.' },
+    act2_morning: { target: 'Sarah', objective: 'Sarah has news.' },
     act2_mindscale: { target: 'Sarah', objective: 'Sarah is waving you over.' },
-    elena_burned: { target: 'obj:desk', objective: 'Late. One more thing at your desk.' },
+    elena_burned: { target: 'obj:couch', objective: 'Your phone is ringing. Take it on the couch.' },
     markup_hearing_open: { target: 'Sarah', objective: 'Sarah saved you a seat in the gallery.' },
     recess_lobby: { target: 'Torres', objective: 'Torres is by the coffee. Two minutes.' },
     whip_boyd_intro: { target: 'Sarah', objective: 'Sarah is waving you over behind a column.' },
@@ -239,8 +280,8 @@ const OVERWORLD_CHOICES = {
     news_break: {
         objective: 'Statement tonight, or wait for the coalition?',
         options: [
-            { at: 'obj:desk', choice: 'news_fast', verb: 'Write it now' },
-            { at: 'obj:speakerphone', choice: 'news_slow', verb: 'Loop in the coalition' }
+            { at: 'obj:laptop', choice: 'news_fast', verb: 'Write it now' },
+            { at: 'obj:bed', choice: 'news_slow', verb: 'Email the coalition, sleep on it' }
         ]
     },
     act2_strategy_choice: {
@@ -267,6 +308,7 @@ const OVERWORLD_CHOICES = {
     whip_boyd_choice: {
         objective: 'Boyd is by the window. Get to him before he goes back in.',
         timer: { seconds: 90, realSeconds: 11, expireText: 'Boyd is heading back in. You catch him at the door.' },
+        interferenceText: 'Elena has the press boxed in mid-hall, talking fast. She doesn\'t look your way.',
         options: [
             { at: 'npc:Boyd', choices: ['boyd_security_router', 'boyd_backfire'], verb: 'Approach Boyd' },
             { at: 'npc:Torres', choice: 'boyd_skipped', verb: 'Work Torres instead' }
@@ -341,11 +383,10 @@ function getWalkPlan(sceneId, scene) {
     if (room.liveCast) sceneSpeakersOnStage(scene).forEach(addCast);
 
     const walk = OVERWORLD_WALKS[sceneId];
+    const parse = (t) => t.startsWith('obj:') ? { type: 'obj', id: t.slice(4) } : { type: 'npc', id: t };
     let target;
     if (walk) {
-        target = walk.target.startsWith('obj:')
-            ? { type: 'obj', id: walk.target.slice(4) }
-            : { type: 'npc', id: walk.target };
+        target = parse(walk.target);
     } else {
         const speaker = sceneSpeakersOnStage(scene).find(s => cast.includes(s) || room.spots[s]);
         if (speaker) {
@@ -360,7 +401,8 @@ function getWalkPlan(sceneId, scene) {
         ? (DISPLAY_NAMES[target.id] || target.id)
         : room.furniture.find(f => f.id === target.id).label;
     const objective = (walk && walk.objective) || (target.type === 'npc' ? `Find ${label}.` : `Go to ${label}.`);
-    return { roomKey, target, objective, cast };
+    const prelude = walk && walk.prelude ? { target: parse(walk.prelude.target), objective: walk.prelude.objective } : null;
+    return { roomKey, target, objective, cast, prelude };
 }
 
 function hashString(str) {
@@ -421,8 +463,10 @@ class Overworld {
         this.viewH = h;
     }
 
-    // Build the room for a scene. The player stands still until beginWalk().
-    enterScene(sceneId, scene) {
+    // Build the room for a scene. The player stands still until beginWalk(). Staying in the same
+    // room keeps the player where they stood instead of sending them back to the door.
+    enterScene(sceneId, scene, flags = {}) {
+        const prev = this.roomKey && this.player ? { room: this.roomKey, x: this.player.x, y: this.player.y, facing: this.player.facing } : null;
         this.plan = getWalkPlan(sceneId, scene);
         this.roomKey = this.plan.roomKey;
         this.room = OVERWORLD_ROOMS[this.plan.roomKey];
@@ -440,15 +484,22 @@ class Overworld {
             Object.assign(npc, { path: m.path, leg: 1, speed: m.speed });
             this.npcs.push(npc);
         });
+        const guard = this.room.interference;
+        this.interference = !!(guard && flags[guard.flag]);
+        if (this.interference) this.addNpc(guard.npc);
         (this.room.reporters || []).forEach(([x, y], i) => {
-            const npc = this.makePerson(`reporter-${i}`, x, y, '#a08a50', null);
-            Object.assign(npc, { reporter: true, home: [x, y], cooldown: 0 });
+            const [hx, hy] = this.interference ? guard.reporters[i] : [x, y];
+            const npc = this.makePerson(`reporter-${i}`, hx, hy, '#a08a50', null);
+            Object.assign(npc, { reporter: true, home: [hx, hy], cooldown: 0, pinned: this.interference });
+            if (this.interference) npc.facing = hx > 11 ? 'left' : 'right';
             this.npcs.push(npc);
         });
 
-        const [sx, sy] = this.room.spawn;
+        const sameRoom = prev && prev.room === this.roomKey;
+        if (!sameRoom) this.disruption = null;
+        const [sx, sy] = sameRoom && !this.blockedBy(this.solids(), prev.x, prev.y) ? [prev.x, prev.y] : this.room.spawn;
         this.player = this.makePerson('You', sx, sy, '#6cb4e0', null);
-        this.player.facing = 'up';
+        this.player.facing = sameRoom ? prev.facing : 'up';
         this.player.skin = '#e8b890';
         this.player.hair = '#3a2818';
 
@@ -459,14 +510,26 @@ class Overworld {
         this.startLoop();
     }
 
-    // Hand control to the player until they press E on the walk target.
-    beginWalk(onArrive) {
+    // Hand control to the player until they press E on the walk target (or the prelude's).
+    // Already standing at it, the scene starts without a walk.
+    beginWalk(onArrive, stage = this.plan) {
         this.onArrive = onArrive;
+        this.targets = [stage.target];
         this.mode = 'walk';
         this.keys.clear();
-        this.objectiveEl.textContent = this.plan.objective;
+        const hit = this.findNearest();
+        if (hit && hit.target) {
+            this.arrive(hit);
+            return;
+        }
+        this.objectiveEl.textContent = stage.objective;
         this.objectiveEl.classList.add('visible');
         this.hintEl.classList.add('visible');
+    }
+
+    // The room's routine breaks: the TV goes to breaking news, the phone buzzes, notifications stack.
+    disrupt() {
+        this.disruption = { t0: this.time };
     }
 
     roomFor(scene) {
@@ -490,6 +553,7 @@ class Overworld {
         this.objectiveEl.textContent = cfg.objective;
         this.objectiveEl.classList.add('visible');
         this.hintEl.classList.add('visible');
+        if (cfg.timer && this.interference) this.showToast(cfg.interferenceText);
         return true;
     }
 
@@ -581,7 +645,7 @@ class Overworld {
         if (hit.kind === 'npc') {
             this.showToast(`${hit.ref.label} is busy. ${this.objectiveEl.textContent}`);
         } else if (hit.ref.text) {
-            this.showToast(hit.ref.text);
+            this.showToast((this.disruption && hit.ref.disruptedText) || hit.ref.text);
         }
     }
 
@@ -698,6 +762,7 @@ class Overworld {
                 const [tx, ty] = n.path[n.leg];
                 if (step(n, tx, ty, n.speed)) n.leg = (n.leg + 1) % n.path.length;
             } else if (n.reporter) {
+                if (n.pinned) continue;
                 n.cooldown = Math.max(0, n.cooldown - dt);
                 const chasing = this.timer && this.mode === 'walk' && n.cooldown === 0 && !p.stun &&
                     Math.hypot(p.x - n.x, p.y - n.y) < 4.5;
@@ -809,6 +874,8 @@ class Overworld {
         ctx.fillRect(0, 0, this.viewW, this.viewH);
         ctx.save();
         ctx.translate(ox, oy);
+        const since = this.disruption ? this.time - this.disruption.t0 : Infinity;
+        if (since < 0.7) ctx.translate((Math.random() - 0.5) * T * 0.3, (Math.random() - 0.5) * T * 0.3);
 
         this.drawFloor(ctx, T);
 
@@ -823,6 +890,7 @@ class Overworld {
         drawables.sort((a, b) => a.y - b.y).forEach(d => d.draw());
 
         this.drawTint(ctx, T);
+        if (this.disruption) this.drawDisruption(ctx, T, since);
         if (this.mode === 'walk') {
             this.drawTargetMarker(ctx, T);
             this.drawPrompt(ctx, T);
@@ -888,7 +956,15 @@ class Overworld {
                 return;
             case 'tv':
                 ctx.fillStyle = '#111'; ctx.fillRect(x, y, w, h);
-                ctx.fillStyle = '#2a4a6a'; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+                if (this.disruption) {
+                    ctx.fillStyle = Math.sin(this.time * 9) > 0 ? '#c8202c' : '#8a1018';
+                    ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+                    ctx.fillStyle = '#fff'; ctx.fillRect(x + 6, y + h * 0.55, w - 12, 3);
+                    ctx.font = `bold ${Math.max(8, Math.floor(T * 0.22))}px "Segoe UI", sans-serif`;
+                    ctx.textAlign = 'center'; ctx.fillText('BREAKING', x + w / 2, y + h * 0.45);
+                } else {
+                    ctx.fillStyle = '#2a4a6a'; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+                }
                 return;
             case 'clock':
                 ctx.fillStyle = '#e8e0c8'; ctx.beginPath();
@@ -1026,6 +1102,46 @@ class Overworld {
             ctx.fillRect(x - tw / 2, hy - T * 0.62, tw, T * 0.34);
             ctx.fillStyle = p.body;
             ctx.fillText(p.label, x, hy - T * 0.37);
+        }
+    }
+
+    // A red flash and the TV's glow, then the phone shaking on the couch under a growing stack of
+    // notifications (one every 0.45s).
+    drawDisruption(ctx, T, since) {
+        const cfg = this.room.disruption || {};
+        const flash = since < 1.2 ? 0.45 * (1 - since / 1.2) : 0;
+        ctx.fillStyle = `rgba(200,30,40,${Math.max(flash, 0.07 + 0.04 * Math.sin(this.time * 4))})`;
+        ctx.fillRect(0, 0, OVERWORLD_W * T, OVERWORLD_H * T);
+        const tv = this.room.furniture.find(f => f.kind === 'tv');
+        if (tv) {
+            const cx = (tv.x + tv.w / 2) * T, cy = (tv.y + tv.h) * T;
+            const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, T * 6);
+            glow.addColorStop(0, `rgba(220,40,50,${0.22 + 0.1 * Math.sin(this.time * 9)})`);
+            glow.addColorStop(1, 'rgba(220,40,50,0)');
+            ctx.fillStyle = glow;
+            ctx.fillRect(cx - T * 6, cy - T, T * 12, T * 7);
+        }
+        if (!cfg.phone) return;
+        const [px, py] = cfg.phone;
+        const jx = Math.sin(this.time * 60) * T * 0.04;
+        ctx.fillStyle = '#111'; ctx.fillRect((px - 0.18) * T + jx, (py - 0.28) * T, T * 0.36, T * 0.56);
+        ctx.fillStyle = '#e8f0ff'; ctx.fillRect((px - 0.13) * T + jx, (py - 0.22) * T, T * 0.26, T * 0.42);
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
+        for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(px * T + jx, py * T, T * (0.38 + 0.06 * Math.sin(this.time * 20)), side > 0 ? -0.6 : Math.PI - 0.6, side > 0 ? 0.6 : Math.PI + 0.6);
+            ctx.stroke();
+        }
+        const shown = Math.min(cfg.notes.length, Math.floor(since / 0.45) + 1);
+        ctx.font = `${Math.max(10, Math.floor(T * 0.24))}px "Segoe UI", sans-serif`;
+        ctx.textAlign = 'left';
+        for (let i = 0; i < shown; i++) {
+            const text = cfg.notes[shown - 1 - i];
+            const bx = (px - 0.4) * T, by = (py - 1.1 - i * 0.62) * T;
+            const bw = ctx.measureText(text).width + T * 0.4;
+            ctx.fillStyle = 'rgba(245,245,240,0.93)'; ctx.fillRect(bx, by - T * 0.42, bw, T * 0.5);
+            ctx.fillStyle = '#c8202c'; ctx.fillRect(bx, by - T * 0.42, T * 0.08, T * 0.5);
+            ctx.fillStyle = '#1a1a1a'; ctx.fillText(text, bx + T * 0.2, by - T * 0.09);
         }
     }
 

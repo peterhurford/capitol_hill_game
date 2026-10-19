@@ -153,13 +153,23 @@ class SceneManager {
                     this.dialogue.hideDialogueBox();
                     this.overworld.beginWalk(() => this.dialogue.startDialogue(rest, finish));
                 };
-                if (intro.length) this.dialogue.startDialogue(intro, walkThenTalk);
-                else walkThenTalk();
+                const playIntro = () => {
+                    if (intro.length) this.dialogue.startDialogue(intro, walkThenTalk);
+                    else walkThenTalk();
+                };
+                // A prelude walk comes first; arriving disrupts the room, then the opening lines play.
+                const prelude = this.overworld.plan.prelude;
+                if (prelude) {
+                    this.overworld.beginWalk(() => {
+                        this.overworld.disrupt();
+                        setTimeout(() => { if (seq === this.loadSeq) playIntro(); }, 1400);
+                    }, prelude);
+                } else playIntro();
             };
 
             if (walk) {
                 this.currentLocation = scene.location;
-                this.overworld.enterScene(scene.id, scene);
+                this.overworld.enterScene(scene.id, scene, this.gameFlags);
             } else if (this.overworld) {
                 this.overworld.syncCast(scene);
             }

@@ -189,9 +189,18 @@ const TestRunner = {
         );
         this.assertEqual(
             routeScene('elena_check', { trustedElena: true, trustedStaffer: false }),
-            'markup_hearing_open',
-            'Trusted Elena but not staffer -> markup_hearing_open (safe)'
+            'elena_ally',
+            'Trusted Elena but not staffer -> elena_ally (her payoff)'
         );
+        this.assertEqual(STORY.scenes.elena_ally.setFlags.elenaRunsInterference, true, 'elena_ally sets elenaRunsInterference');
+        this.assertEqual(STORY.scenes.elena_ally.nextScene, 'markup_hearing_open', 'elena_ally continues to the markup');
+        // The payoff is the press, not a vote: it must stay out of the vote math and the ending routers
+        this.assertEqual(getAmendment7Result({ elenaRunsInterference: true }).swings, getAmendment7Result({}).swings,
+            'elenaRunsInterference adds no vote swing');
+        for (const id of ['climax_choice_check', 'ending_check']) {
+            this.assert(!ROUTING_RULES[id].rules.some(r => r.condition.toString().includes('elenaRunsInterference')),
+                `${id} ignores elenaRunsInterference`);
+        }
         this.assertEqual(
             routeScene('elena_check', { trustedElena: false, trustedStaffer: true }),
             'markup_hearing_open',
@@ -744,7 +753,7 @@ const TestRunner = {
             // Conservative cast + Boyd whip-count deduction puzzle
             'metMarcus', 'clueMarcusTie', 'clueBoydDonor', 'clueBoydHawk',
             'whipBoydMonopoly', 'whipBoydSecurity', 'whipBoydSkip',
-            'boydFlipped', 'bipartisanWin'
+            'boydFlipped', 'bipartisanWin', 'elenaRunsInterference'
         ];
         for (const flag of expectedFlags) {
             this.assert(
@@ -1413,6 +1422,16 @@ const TestRunner = {
         this.assert(marcusSkeptic !== undefined, 'marcus_intro offers a skeptical choice that earns clueMarcusTie');
         this.assert(marcusSkeptic.conditionalOnly === '!clueMarcusTie', 'The earn-it-yourself option only shows if you do not already have the clue');
 
+        // ELENA'S LEAD: both bar branches deliver the Amendment 7 tip and the monopoly frame on Boyd,
+        // since the markup and the whip-count recap quote them whether or not you trusted her.
+        for (const id of ['elena_trusted', 'elena_suspicious']) {
+            const said = STORY.scenes[id].dialogue.filter(l => l.speaker === 'Elena').map(l => l.text).join(' ');
+            this.assert(said.includes('Amendment 7'), `${id}: Elena names Amendment 7 as the real play`);
+            this.assert(said.includes('monopolies'), `${id}: Elena gives the monopoly frame on Boyd`);
+        }
+        const recapElena = STORY.scenes.whip_boyd_intro.dialogue.find(l => l.text && l.text.startsWith('Elena said'));
+        this.assert(recapElena && !recapElena.conditionalOnly, 'whip_boyd_intro quotes Elena\'s frame on every path');
+
         // BETRAYAL COST: burning Elena now costs you the Marcus read she gave you (no longer nukes endings)
         this.assert(STORY.scenes.elena_burned.setFlags.clueMarcusTie === false, 'elena_burned clears clueMarcusTie (the betrayal cost)');
 
@@ -1623,6 +1642,21 @@ const TestRunner = {
             if (cfg.timer) this.assert(!('timeout' in cfg.timer), `${id} timer has no timeout outcome`);
         }
         this.assertEqual(getRoomKey(STORY.scenes.whip_boyd_choice), 'hallway', 'whip_boyd_choice is staged in the hallway');
+
+        // Elena's interference: she and the pinned reporters stand on open floor, one spot per reporter
+        const hall = OVERWORLD_ROOMS.hallway, hallSolid = hall.furniture.filter(f => f.solid !== false);
+        this.assertEqual(hall.interference.reporters.length, hall.reporters.length, 'every reporter has a pinned spot');
+        this.assert(hall.spots[hall.interference.npc] !== undefined, 'the interfering NPC has a hallway spot');
+        for (const [x, y] of hall.interference.reporters) {
+            this.assert(!hallSolid.some(f => overlaps(x, y, f)), `pinned reporter at ${x},${y} is open floor`);
+        }
+        this.assert(OVERWORLD_CHOICES.whip_boyd_choice.interferenceText, 'the Boyd chase says Elena has the press');
+
+        // Titan 4: a prelude walk to bed, then disrupt() before the walk to the phone
+        const newsPlan = getWalkPlan('news_break', STORY.scenes.news_break);
+        this.assertEqual(newsPlan.roomKey, 'apartment', 'news_break plays in the apartment');
+        this.assertDeepEqual(newsPlan.prelude && newsPlan.prelude.target, { type: 'obj', id: 'bed' }, 'news_break opens with a walk to bed');
+        this.assert(OVERWORLD_ROOMS.apartment.disruption.notes.length > 0, 'the apartment has notifications for the disruption');
 
         this.assertDeepEqual(getWalkPlan('intro', STORY.scenes.intro).target, { type: 'obj', id: 'desk' }, 'intro walk ends at your desk');
         this.assertDeepEqual(getWalkPlan('climax', STORY.scenes.climax).cast, [], 'nobody stands at the Mall (all phone calls)');

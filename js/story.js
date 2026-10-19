@@ -5,8 +5,7 @@ const LOCATIONS = {
     office: { location: 'AAPC Office', background: 'bg-office' },
     officeCoalition: { location: 'AAPC Office - Coalition Call', background: 'bg-coalition' },
     officeLate: { location: 'AAPC Office - Late Night', background: 'bg-office' },
-    officeNight: { location: 'AAPC Office - 11:47 PM', background: 'bg-office' },
-    officeMidnight: { location: 'AAPC Office - 12:14 AM', background: 'bg-office' },
+    apartmentNight: { location: 'Your Apartment - 11:47 PM', background: 'bg-apartment' },
     officeInbox: { location: 'AAPC Office - 4:47 PM', background: 'bg-office' },
     officeNextMorning: { location: 'AAPC Office - Early Morning', background: 'bg-office' },
     officeSixMonths: { location: 'AAPC Office - Six Months Later', background: 'bg-office' },
@@ -129,6 +128,11 @@ const ROUTING_RULES = {
                 // Trusted both Elena and the staffer = Elena gets burned
                 condition: (flags) => flags.trustedElena && flags.trustedStaffer,
                 target: 'elena_burned'
+            },
+            {
+                // Trusted Elena and kept her tip to yourself = she runs interference at the recess
+                condition: (flags) => flags.trustedElena,
+                target: 'elena_ally'
             }
         ],
         // Otherwise proceed normally to markup
@@ -283,6 +287,7 @@ const STORY = {
         sharedWithPriya: false,
         trustedStaffer: false,
         elenaBurned: false,
+        elenaRunsInterference: false,  // trusted Elena, never leaked her: she keeps the press off you during the Boyd chase
         coalitionAligned: false,
         seizedMoment: false,
         foundEvidence: false,
@@ -744,6 +749,11 @@ const STORY = {
                 },
                 {
                     speaker: 'Elena',
+                    text: 'And when you start counting votes, you\'ll end up at Boyd. Everyone does. He hates Big Tech. Frame Amendment 7 as reining in the monopolies and he\'s yours.',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
                     text: 'One more thing, since we\'re being honest. You\'re going to meet a man named Marcus Halloran. Liberty and Innovation Forum, very smooth, talks like he\'s on your side.',
                     portrait: 'portrait-elena'
                 },
@@ -786,6 +796,21 @@ const STORY = {
                     speaker: 'Elena',
                     text: 'Because I\'m having a crisis of professional faith and you seemed like someone who might understand.',
                     portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
+                    text: 'I\'ll tell you anyway. Do what you want with it. Amendments 3 through 6 are padding—we let them die so it looks like we compromised. Amendment 7 is where the testing requirements get gutted.',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
+                    text: 'And when you start counting votes, you\'ll end up at Boyd. He hates Big Tech. Frame 7 as reining in the monopolies and he\'s yours.',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You write it down. You don\'t write down that you believe it.',
+                    portrait: null
                 },
                 {
                     speaker: 'Elena',
@@ -973,6 +998,12 @@ const STORY = {
                     speaker: 'Narrator',
                     text: 'He seems earnest. But then, everyone in this town seems earnest.',
                     portrait: null
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You think of Elena\'s tip. Not yours to pass along, not until you know whether it\'s true.',
+                    portrait: null,
+                    conditionalOnly: '!trustedElena'
                 }
             ],
             choices: [
@@ -2121,7 +2152,7 @@ const STORY = {
         // Breaking news creates a narrow window of relevance
         news_break: {
             id: 'news_break',
-            ...LOCATIONS.officeNight,
+            ...LOCATIONS.apartmentNight,
             dialogue: [
                 {
                     speaker: 'Narrator',
@@ -2204,7 +2235,7 @@ const STORY = {
 
         news_fast: {
             id: 'news_fast',
-            ...LOCATIONS.officeMidnight,
+            ...LOCATIONS.officeNextMorning,
             dialogue: [
                 {
                     speaker: 'Narrator',
@@ -2771,6 +2802,35 @@ const STORY = {
             nextScene: 'elena_check_router'
         },
 
+        elena_ally: {
+            id: 'elena_ally',
+            ...LOCATIONS.officeOneDayBefore,
+            dialogue: [
+                {
+                    speaker: 'Narrator',
+                    text: 'Your phone buzzes. Elena.',
+                    portrait: null
+                },
+                {
+                    speaker: 'Elena',
+                    text: '"Peters wants this done by lunch, so the recess will be short. Boyd always steps out into the hallway alone. Ninety seconds, maybe less."',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Elena',
+                    text: '"The press pool will be in that hallway too. I\'ll keep them busy. You won\'t see me do it."',
+                    portrait: 'portrait-elena'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'You read it twice, then put the phone face down.',
+                    portrait: null
+                }
+            ],
+            setFlags: { elenaRunsInterference: true },
+            nextScene: 'markup_hearing_open'
+        },
+
         elena_check_router: {
             id: 'elena_check_router',
             isRouter: true,
@@ -2958,7 +3018,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Four amendments. Four votes. Industry didn\'t fight a single one. Their lobbyists haven\'t opened their folders.',
+                    text: 'Four amendments. Four votes. Industry didn\'t fight a single one, exactly the way Elena said it would go. Their lobbyists haven\'t opened their folders.',
                     portrait: null,
                     conditionalOnly: '!trustedElena'
                 },
@@ -2971,7 +3031,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Sarah',
-                    text: 'Why aren\'t they fighting? Those were their amendments.',
+                    text: 'Your bar source was right about the sacrificial ones.',
                     portrait: null,
                     conditionalOnly: '!trustedElena'
                 },
@@ -2988,7 +3048,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Peters leans forward. The lobbyists open their folders. Suddenly you understand—everything before this was theater.',
+                    text: 'Peters leans forward. The lobbyists open their folders. Elena called this one too. You still don\'t know what she gets for it.',
                     portrait: null,
                     conditionalOnly: '!trustedElena'
                 },
@@ -3293,14 +3353,13 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'You run through what you know. Three people told you three different things about Boyd.',
+                    text: 'You run through what you know. Two people gave you two different reads on Boyd.',
                     portrait: null
                 },
                 {
                     speaker: 'Narrator',
                     text: 'Elena said: he hates Big Tech—frame Amendment 7 as reining in the monopolies and he\'s yours.',
-                    portrait: null,
-                    conditionalOnly: 'trustedElena'
+                    portrait: null
                 },
                 {
                     speaker: 'Narrator',
@@ -3310,7 +3369,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'None of them agree, and none of them are disinterested. What you actually have to go on is the things you dug up yourself.',
+                    text: 'They don\'t agree, and neither of them is disinterested. What you actually have to go on is the things you dug up yourself.',
                     portrait: null
                 },
                 {
@@ -3336,6 +3395,12 @@ const STORY = {
                     text: 'You never got close enough to any of them to get a real read on Boyd. You\'ll have to go on instinct.',
                     portrait: null,
                     conditionalOnly: '!clueBoydHawk'
+                },
+                {
+                    speaker: 'Narrator',
+                    text: 'Down the hall, Elena steps into the press pool\'s path and starts talking.',
+                    portrait: null,
+                    conditionalOnly: 'elenaRunsInterference'
                 },
                 {
                     speaker: 'Sarah',
@@ -3649,8 +3714,7 @@ const STORY = {
                 {
                     speaker: 'Narrator',
                     text: 'Across the room, Elena isn\'t looking at you. The frame she handed you would have closed the door on Boyd—and you think she knows you figured that out.',
-                    portrait: null,
-                    conditionalOnly: 'trustedElena'
+                    portrait: null
                 },
                 {
                     speaker: 'Narrator',
@@ -4510,6 +4574,7 @@ const STORY = {
                 {
                     speaker: 'Narrator',
                     text: 'Your phone buzzes. Elena.',
+                    conditionalOnly: 'trustedElena',
                     portrait: null
                 },
                 {
@@ -4520,7 +4585,7 @@ const STORY = {
                 },
                 {
                     speaker: 'Narrator',
-                    text: 'Another buzz. Priya.',
+                    textFn: (flags) => flags.trustedElena ? 'Another buzz. Priya.' : 'Your phone buzzes. Priya.',
                     portrait: null,
                     conditionalOnly: 'sharedWithPriya'
                 },

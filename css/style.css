@@ -255,6 +255,15 @@ body {
     pointer-events: none;
 }
 
+/* Your apartment - one lamp, one window, cable news on mute */
+.bg-apartment {
+    background: linear-gradient(180deg,
+        #1a1e28 0%,
+        #2a2a30 40%,
+        #201c1a 100%
+    );
+}
+
 /* National Mall at Night - Monumental loneliness, deep navy */
 .bg-mall {
     background: linear-gradient(180deg,
