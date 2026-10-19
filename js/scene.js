@@ -10,6 +10,7 @@ class SceneManager {
         this.locationIndicator = document.getElementById('location-indicator');
 
         this.currentScene = null;
+        this.loadSeq = 0;  // bumped on every scene load so a load from a save cancels the old scene's pending timeouts
         this.currentDay = 1;
         this.gameFlags = {};
         this.transitionDuration = 500; // ms
@@ -43,6 +44,7 @@ class SceneManager {
 
         this.currentScene = scene;
         this.currentSceneId = sceneId;
+        const seq = ++this.loadSeq;
 
         // Track day progression
         if (scene.day) {
@@ -58,7 +60,7 @@ class SceneManager {
         const processedScene = this.processConditionalDialogue(scene);
 
         // Transition to new scene
-        this.transitionToScene(processedScene);
+        this.transitionToScene(processedScene, seq);
     }
 
     // Process conditional dialogue based on game flags
@@ -96,7 +98,7 @@ class SceneManager {
     }
 
     // Handle scene transition with fade
-    transitionToScene(scene) {
+    transitionToScene(scene, seq = this.loadSeq) {
         let walk = this.overworld &&
             (scene.location !== this.currentLocation || this.overworld.roomFor(scene) !== this.overworld.roomKey);
         if (walk && this.skipWalkOnce && this.overworld.roomFor(scene) === this.overworld.roomKey) {
@@ -113,6 +115,7 @@ class SceneManager {
         this.dialogue.hideDialogueBox();
 
         setTimeout(() => {
+            if (seq !== this.loadSeq) return;
             // Update background
             this.sceneBackground.className = scene.background || '';
 
@@ -162,6 +165,7 @@ class SceneManager {
             }
 
             setTimeout(() => {
+                if (seq !== this.loadSeq) return;
                 this.locationIndicator.classList.add('visible');
                 if (walk) enterRoom();
                 else startDialogue();
@@ -202,8 +206,9 @@ class SceneManager {
             }
         } else if (scene.nextScene) {
             // Auto-advance to next scene after a brief pause
+            const seq = this.loadSeq;
             setTimeout(() => {
-                this.loadScene(scene.nextScene);
+                if (seq === this.loadSeq) this.loadScene(scene.nextScene);
             }, 500);
         } else if (scene.isEnding) {
             // Show ending
@@ -232,13 +237,16 @@ class SceneManager {
     // Show ending screen
     showEndingScreen(endingType) {
         localStorage.removeItem('capitol_save');
+        const seq = this.loadSeq;
         setTimeout(() => {
+            if (seq !== this.loadSeq) return;
             this.dialogue.hideDialogueBox();
             this.locationIndicator.textContent = endingType;
             this.locationIndicator.classList.add('visible');
 
             // Add restart option
             setTimeout(() => {
+                if (seq !== this.loadSeq) return;
                 const restartBtn = document.createElement('button');
                 restartBtn.className = 'choice-btn visible selected';
                 restartBtn.textContent = 'Play Again';

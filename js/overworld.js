@@ -397,6 +397,7 @@ class Overworld {
         this.time = 0;
         this.lastFrame = 0;
         this.rafId = null;
+        this.paused = false;   // the save/load panel freezes movement and the countdown
         this.toastTimer = null;
 
         window.addEventListener('resize', () => this.resize());
@@ -647,7 +648,7 @@ class Overworld {
             const dt = Math.min((now - this.lastFrame) / 1000, 0.05);
             this.lastFrame = now;
             this.time += dt;
-            this.update(dt);
+            if (!this.paused) this.update(dt);
             this.render();
             this.rafId = requestAnimationFrame(tick);
         };

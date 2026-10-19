@@ -17,6 +17,7 @@
                 <div class="menu-buttons">
                     <button id="start-btn" class="menu-btn">Start Game</button>
                     <button id="continue-btn" class="menu-btn" disabled>Continue</button>
+                    <button id="load-btn" class="menu-btn" disabled>Load Game</button>
                 </div>
             </div>
         </div>
@@ -32,6 +33,7 @@
             <div id="controls-hint">WASD / arrows to move &middot; E to interact</div>
             <div id="toast"></div>
             <div id="timer"></div>
+            <button id="menu-toggle" title="Save / Load (Esc)">Save / Load</button>
 
             <!-- Location Indicator -->
             <div id="location-indicator"></div>
@@ -48,6 +50,18 @@
 
             <!-- Choice Container -->
             <div id="choice-container"></div>
+        </div>
+
+        <!-- Save / Load panel (Esc in game) -->
+        <div id="save-menu">
+            <div class="save-panel">
+                <h3 class="save-title">Save / Load</h3>
+                <div id="save-slots"></div>
+                <div class="save-footer">
+                    <button id="quit-btn" class="save-action">Main Menu</button>
+                    <button id="save-close" class="save-action">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -867,3 +867,116 @@ body {
         bottom: 180px;
     }
 }
+
+/* Save / Load */
+#menu-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 20;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08rem;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(233, 69, 96, 0.4);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#menu-toggle:hover {
+    color: var(--text-color);
+    border-color: var(--accent-color);
+}
+
+#objective {
+    top: 64px;
+}
+
+#save-menu {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#save-menu.visible {
+    display: flex;
+}
+
+.save-panel {
+    width: 90%;
+    max-width: 640px;
+    padding: 1.5rem 2rem;
+    background: var(--dialogue-bg);
+    border: 1px solid rgba(233, 69, 96, 0.4);
+    border-radius: 5px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+}
+
+.save-title {
+    font-weight: 400;
+    letter-spacing: 0.1rem;
+    margin-bottom: 1rem;
+    color: var(--beige);
+}
+
+.save-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.save-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.save-name {
+    font-size: 0.9rem;
+}
+
+.save-detail {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.save-action {
+    padding: 0.4rem 1rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.06rem;
+    text-transform: uppercase;
+    color: var(--text-color);
+    background: var(--choice-bg);
+    border: 1px solid rgba(233, 69, 96, 0.4);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.save-action:hover:not(:disabled) {
+    background: var(--choice-hover);
+}
+
+.save-action:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.save-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

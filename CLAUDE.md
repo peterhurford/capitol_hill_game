@@ -145,4 +145,4 @@ Tests live in `js/tests.js` using a custom `TestRunner` class with `assert()`, `
 
 ## Save System
 
-localStorage key `"capitol_save"` stores JSON: `{ currentScene, flags, currentDay, timestamp }`. Saves automatically after every scene load. Cleared on new game or reaching an ending.
+Autosave: localStorage key `"capitol_save"` stores JSON `{ currentScene, flags, currentDay, location, timestamp }`, written after every scene load (the menu's Continue) and cleared on new game or reaching an ending. Manual saves: three slots in `"capitol_slots"` (an array of the same objects), from the Save / Load panel (Esc or the top-right button in game, Load Game on the menu); they survive endings and new games. Either kind resumes at the start of its scene via `Game.restoreGame`, which bumps `SceneManager.loadSeq` so the abandoned scene's pending timeouts bail. The open panel sets `overworld.paused`, freezing movement and the Boyd countdown.
